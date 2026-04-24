@@ -1,2 +1,0 @@
-git clone https://github.com/pulp-platform/axi
-also clone common_cells repo
