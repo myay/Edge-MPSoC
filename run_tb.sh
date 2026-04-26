@@ -15,7 +15,7 @@ verilator --Wno-fatal --binary --trace --timescale 1ns/1ps --assert \
 
 cd obj_dir || exit
 
-#./V${tb_top_name}
+./V${tb_top_name}
 
 #if [ "$1" = "wf" ]; then
 #  gtkwave dump.vcd &

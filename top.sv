@@ -16,8 +16,8 @@ module top;
     $dumpfile("dump.vcd");
     $dumpvars(0, top);
     rst_n = 0;
-    #20 rst_n = 1;
-    #1000;
+    #50 rst_n = 1;
+    #500000;
     $display("Simulation limit reached. Ending...");
     $finish;
   end
@@ -53,19 +53,20 @@ module top;
   axi_resp_t axi_resp_o;
   logic busy_o;
 
-  logic [NUM_BANKS-1:0] mem_req_o;
-  logic [NUM_BANKS-1:0] mem_gnt_i;
-  logic [NUM_BANKS-1:0][AXI_ADDR_WIDTH-1:0] mem_addr_o;
-  logic [NUM_BANKS-1:0][AXI_DATA_WIDTH-1:0] mem_wdata_o;
-  logic [NUM_BANKS-1:0][(AXI_DATA_WIDTH/NUM_BANKS)/8-1:0] mem_strb_o;
-  logic [NUM_BANKS-1:0] mem_we_o;
-  logic [NUM_BANKS-1:0] mem_rvalid_i;
-  logic [NUM_BANKS-1:0][AXI_DATA_WIDTH-1:0] mem_rdata_i;
+  logic [NUM_BANKS-1:0] mem_req_o; // signal with which bridge tells that it has an axi transaction
+  logic [NUM_BANKS-1:0] mem_gnt_i; // using mem_gnt_i, the memory can tell the AXI bus to "Wait"
+  logic [NUM_BANKS-1:0][AXI_ADDR_WIDTH-1:0] mem_addr_o; // address to write to or read from in the memory
+  logic [NUM_BANKS-1:0][AXI_DATA_WIDTH-1:0] mem_wdata_o; // data to write to memory
+  logic [NUM_BANKS-1:0][(AXI_DATA_WIDTH/NUM_BANKS)/8-1:0] mem_strb_o; // used to write single bytes, currently ignored
+  logic [NUM_BANKS-1:0] mem_we_o; // write enable
+  logic [NUM_BANKS-1:0] mem_rvalid_i; // tells that data on mem_rdata_i is ready to be sampled
+  logic [NUM_BANKS-1:0][AXI_DATA_WIDTH-1:0] mem_rdata_i; // carries data from the memory to the bridge
 
   // Minimal dummy for axi_pkg::atop_t
   //typedef logic atop_t;
   //atop_t mem_atop_o [NUM_BANKS-1:0];
   typedef axi_pkg::atop_t atop_t;
+  atop_t [NUM_BANKS-1:0] mem_atop_o;
    
   // ---------------------------
   // Instantiate AXI → Memory bridge
@@ -81,55 +82,137 @@ module top;
     .clk_i      (clk),
     .rst_ni     (rst_n),
     .busy_o     (busy_o),
-    .axi_req_i  (axi_req_i),
-    .axi_resp_o (axi_resp_o),
+    .axi_req_i  (axi_req_i), // contain the axi4 signal list for req (master to slave)
+    .axi_resp_o (axi_resp_o), // axi4 signal list for resp (slave to master)
     .mem_req_o  (mem_req_o),
     .mem_gnt_i  (mem_gnt_i),
     .mem_addr_o (mem_addr_o),
     .mem_wdata_o(mem_wdata_o),
     .mem_strb_o (mem_strb_o),
-    .mem_atop_o (mem_atop_o),
+    .mem_atop_o (mem_atop_o), // axi4 atomic transaction, used to carry atomic transactions from the AXI bus down to the memory (if two CPUs are trying to increment a counter at the same time, they use ATOPs to ensure the counter doesn't get corrupted)
     .mem_we_o   (mem_we_o),
     .mem_rvalid_i(mem_rvalid_i),
     .mem_rdata_i(mem_rdata_i)
   );
 
+  //assign mem_gnt_i = mem_req_o;
+  assign mem_gnt_i = 1'b1;
+   
   // ---------------------------
   // Tiny SRAM model (behavioral)
   // ---------------------------
   localparam MEM_DEPTH = 1024;
   logic [AXI_DATA_WIDTH-1:0] mem [0:MEM_DEPTH-1];
 
-  always_ff @(posedge clk) begin
-    mem_rvalid_i <= 0;
+  always_ff @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      mem_rvalid_i <= '0;
+      mem_rdata_i  <= '0;
+    end else begin
+      // Default state: no valid data
+      mem_rvalid_i <= '0;
 
     if (mem_req_o[0]) begin
       if (mem_we_o[0]) begin
-        mem[mem_addr_o[0][11:3]] <= mem_wdata_o[0]; // write
+        // WRITE PHASE
+        mem[mem_addr_o[0][11:3]] <= mem_wdata_o[0];
+	mem_rvalid_i[0] <= 1'b1; 
+        $display("[%0t] SRAM: Writing %h to Addr %h", $time, mem_wdata_o[0], mem_addr_o[0]);
       end else begin
-        mem_rdata_i[0] <= mem[mem_addr_o[0][11:3]]; // read
-        mem_rvalid_i[0] <= 1;
+        // READ PHASE
+        mem_rdata_i[0]  <= mem[mem_addr_o[0][11:3]];
+        mem_rvalid_i[0] <= 1'b1;
+        $display("[%0t] SRAM: Reading %h from Addr %h", $time, mem[mem_addr_o[0][11:3]], mem_addr_o[0]);
       end
     end
-  end
+    end // else: !if(!rst_n)
+   end    
 
-  // ---------------------------
-  // Minimal stimulus
+// ---------------------------
+  // Stimulus Logic
   // ---------------------------
   initial begin
-    axi_req_i.aw_valid = 0;
-    axi_req_i.ar_valid = 0;
-    axi_req_i.w_valid  = 0;
-    axi_req_i.b_ready  = 1;
-    axi_req_i.r_ready  = 1;
+    // Initialize signals
+    axi_req_i = '0;           // Clear all bits in the struct
+    axi_req_i.b_ready = 1'b1; // Always ready for write responses
+    axi_req_i.r_ready = 1'b1; // Always ready for read data
+    //mem_gnt_i = '1;           // Memory is always ready to grant
+    axi_req_i.aw.prot = 3'b010; // Unprivileged, Non-secure, Data
+    axi_req_i.ar.prot = 3'b010;
 
-    // Example: toggle aw_valid after reset
-    #30 axi_req_i.aw_valid = 1;
-    #20 axi_req_i.aw_valid = 0;
+    axi_req_i.aw.burst = 2'b01; 
+    axi_req_i.aw.cache = 4'b0011;
+    axi_req_i.aw.prot  = 3'b000;
+    
+    axi_req_i.ar.burst = 2'b01;
+    axi_req_i.ar.cache = 4'b0011;
+    axi_req_i.ar.prot  = 3'b010; 
+     
+    // Wait for reset to de-assert
+    @(posedge rst_n);
+    repeat (5) @(posedge clk);
+    #1; // Step away from the edge
 
-    // Example: toggle w_valid
-    #50 axi_req_i.w_valid = 1;
-    #10 axi_req_i.w_valid = 0;
+    // --- STEP 1: WRITE DATA ---
+    $display("[%0t] Starting Write Transaction...", $time);
+    
+    // Drive address (AW)
+    axi_req_i.aw.addr = 32'h0000_0008;
+    axi_req_i.aw.len  = 8'd0;       // Single beat (burst length = 1)
+    axi_req_i.aw.size = 3'b011;     // 8 bytes (64-bit)
+    axi_req_i.aw_valid = 1'b1;
+
+    // Wait a few cycles before driving data
+    repeat (2) @(posedge clk);
+    #1;
+     
+    // Drive data (W) 
+    axi_req_i.w.data  = 64'hDEADBEEFCAFEBABE;
+    axi_req_i.w.strb  = '1;         // Write all bytes
+    axi_req_i.w.last  = 1'b1;       // Last beat of burst
+    axi_req_i.w_valid = 1'b1; 
+
+    $display("[%0t] Master AW_VALID=%b, W_VALID=%b", $time, axi_req_i.aw_valid, axi_req_i.w_valid);
+    $display("[%0t] Bridge AW_READY=%b, W_READY=%b", $time, axi_resp_o.aw_ready, axi_resp_o.w_ready);
+    // Wait for AW and W handshakes
+
+    fork
+      @(posedge clk iff axi_resp_o.aw_ready);
+      @(posedge clk iff axi_resp_o.w_ready);
+    join
+    #1; // Delay slightly to satisfy hold time
+    axi_req_i.aw_valid = 1'b0;
+    axi_req_i.w_valid  = 1'b0;
+
+    // Wait for Write Response (B)
+    wait (axi_resp_o.b_valid);
+    $display("[%0t] Write Finished!", $time);
+    repeat (2) @(posedge clk);
+
+
+    // --- STEP 2: READ DATA ---
+    $display("[%0t] Starting Read Transaction...", $time);
+    
+    axi_req_i.ar.addr = 32'h0000_0008; // Read the same address
+    axi_req_i.ar.len  = 8'd0;
+    axi_req_i.ar.size = 3'b011;
+    axi_req_i.ar_valid = 1'b1;
+
+    // Wait for AR handshake
+    wait (axi_resp_o.ar_ready);
+    @(posedge clk);
+    axi_req_i.ar_valid = 1'b0;
+
+    // Wait for Read Data (R)
+    wait (axi_resp_o.r_valid);
+    $display("[%0t] Read Data Received: %h", $time, axi_resp_o.r.data);
+    
+    if (axi_resp_o.r.data === 64'hDEADBEEFCAFEBABE)
+      $display("SUCCESS: Data matches!");
+    else
+      $display("ERROR: Data mismatch!");
+
+    repeat (10) @(posedge clk);
+    $finish;
   end
-
 endmodule
