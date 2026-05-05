@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+`timescale 1ns/1ps // unit of time for delay / time precision (resolution of the smallest step the sim takes)
 `include "../include/axi/typedef.svh"
 
 module top;
@@ -17,7 +17,7 @@ module top;
     $dumpvars(0, top);
     rst_n = 0;
     #50 rst_n = 1;
-    #500000;
+    #5000;
     $display("Simulation limit reached. Ending...");
     $finish;
   end
@@ -95,38 +95,69 @@ module top;
     .mem_rdata_i(mem_rdata_i)
   );
 
-  //assign mem_gnt_i = mem_req_o;
-  assign mem_gnt_i = 1'b1;
+  // ---------------------------
+  // Xbar Configuration (PULP Struct Matched)
+  // ---------------------------
+  localparam int unsigned XBAR_NM = 1; // Number of Masters (CPUs/NPUs)
+  localparam int unsigned XBAR_NS = 1; // Number of Slaves (Bridges/Memories)
+
+  // 1. Define the Address Routing Rules
+  // This maps address ranges to specific Slave Port indexes
+  localparam axi_pkg::xbar_rule_32_t [0:0] XbarAddrTable = '{
+    '{
+      idx:        32'd0,          // Route to Master Port 0 (your SRAM bridge)
+      start_addr: 32'h0000_0000,
+      end_addr:   32'h0000_FFFF   // 64KB range
+    }
+  };
+
+  // 2. Define the main Xbar configuration struct
+  localparam axi_pkg::xbar_cfg_t XbarCfg = '{
+    NoSlvPorts:         XBAR_NM,            // Masters connect to Slave Ports
+    NoMstPorts:         XBAR_NS,            // Slaves connect to Master Ports
+    MaxMstTrans:        4,                  // Allow some in-flight buffer
+    MaxSlvTrans:        4,
+    FallThrough:        1'b1,               // Immediate data availability
+    LatencyMode:        axi_pkg::NO_LATENCY, 
+    PipelineStages:     0,
+    AxiIdWidthSlvPorts: AXI_ID_WIDTH,
+    AxiIdUsedSlvPorts:  AXI_ID_WIDTH,
+    UniqueIds:          1'b0,
+    AxiAddrWidth:       AXI_ADDR_WIDTH,
+    AxiDataWidth:       AXI_DATA_WIDTH,
+    NoAddrRules:        32'd1               // We defined 1 rule above
+  };
    
   // ---------------------------
   // Tiny SRAM model (behavioral)
   // ---------------------------
   localparam MEM_DEPTH = 1024;
   logic [AXI_DATA_WIDTH-1:0] mem [0:MEM_DEPTH-1];
-
+  
+  assign mem_gnt_i = '1; // Memory is always ready to accept a request
+  
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       mem_rvalid_i <= '0;
       mem_rdata_i  <= '0;
     end else begin
-      // Default state: no valid data
-      mem_rvalid_i <= '0;
-
-    if (mem_req_o[0]) begin
-      if (mem_we_o[0]) begin
-        // WRITE PHASE
-        mem[mem_addr_o[0][11:3]] <= mem_wdata_o[0];
-	mem_rvalid_i[0] <= 1'b1; 
-        $display("[%0t] SRAM: Writing %h to Addr %h", $time, mem_wdata_o[0], mem_addr_o[0]);
+      // Simple handshake: rvalid is high for one cycle following a request
+      if (mem_req_o[0]) begin
+        if (mem_we_o[0]) begin
+          // WRITE
+          mem[mem_addr_o[0][11:3]] <= mem_wdata_o[0];
+          $display("[%0t] SRAM: Writing %h to Addr %h", $time, mem_wdata_o[0], mem_addr_o[0]);
+        end else begin
+          // READ
+          mem_rdata_i[0]  <= mem[mem_addr_o[0][11:3]];
+          $display("[%0t] SRAM: Reading %h from Addr %h", $time, mem[mem_addr_o[0][11:3]], mem_addr_o[0]);
+        end
+        mem_rvalid_i[0] <= 1'b1; // Trigger valid on the cycle after req
       end else begin
-        // READ PHASE
-        mem_rdata_i[0]  <= mem[mem_addr_o[0][11:3]];
-        mem_rvalid_i[0] <= 1'b1;
-        $display("[%0t] SRAM: Reading %h from Addr %h", $time, mem[mem_addr_o[0][11:3]], mem_addr_o[0]);
+        mem_rvalid_i[0] <= 1'b0; // Clear it if no new request
       end
     end
-    end // else: !if(!rst_n)
-   end    
+  end
 
 // ---------------------------
   // Stimulus Logic

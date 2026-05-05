@@ -17,6 +17,6 @@ cd obj_dir || exit
 
 ./V${tb_top_name}
 
-#if [ "$1" = "wf" ]; then
-#  gtkwave dump.vcd &
-#fi
+if [ "$1" = "wf" ]; then
+  gtkwave dump.vcd &
+fi
