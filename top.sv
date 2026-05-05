@@ -82,8 +82,10 @@ module top;
     .clk_i      (clk),
     .rst_ni     (rst_n),
     .busy_o     (busy_o),
-    .axi_req_i  (axi_req_i), // contain the axi4 signal list for req (master to slave)
-    .axi_resp_o (axi_resp_o), // axi4 signal list for resp (slave to master)
+    //.axi_req_i  (axi_req_i), // contain the axi4 signal list for req (master to slave)
+    //.axi_resp_o (axi_resp_o), // axi4 signal list for resp (slave to master)
+    .axi_req_i  (xbar_master_req[0]),
+    .axi_resp_o (xbar_master_resp[0]),		  
     .mem_req_o  (mem_req_o),
     .mem_gnt_i  (mem_gnt_i),
     .mem_addr_o (mem_addr_o),
@@ -127,6 +129,49 @@ module top;
     AxiDataWidth:       AXI_DATA_WIDTH,
     NoAddrRules:        32'd1               // We defined 1 rule above
   };
+
+  // Arrays for Xbar connections
+  // NM = Number of Masters, NS = Number of Slaves
+  axi_req_t  [XBAR_NM-1:0] xbar_slave_req;
+  axi_resp_t [XBAR_NM-1:0] xbar_slave_resp;
+
+  axi_req_t  [XBAR_NS-1:0] xbar_master_req;
+  axi_resp_t [XBAR_NS-1:0] xbar_master_resp;
+   
+  axi_xbar #(
+    .Cfg           ( XbarCfg        ),
+    .Connectivity  ( '1 ), // All-to-all connectivity
+    .ATOPs         ( 1'b0           ), // Set to 0 to bypass the failing filter for now
+    .slv_aw_chan_t ( my_axi_aw_chan_t ),
+    .mst_aw_chan_t ( my_axi_aw_chan_t ),
+    .w_chan_t      ( my_axi_w_chan_t  ),
+    .slv_b_chan_t  ( my_axi_b_chan_t  ),
+    .mst_b_chan_t  ( my_axi_b_chan_t  ),
+    .slv_ar_chan_t ( my_axi_ar_chan_t ),
+    .mst_ar_chan_t ( my_axi_ar_chan_t ),
+    .slv_r_chan_t  ( my_axi_r_chan_t  ),
+    .mst_r_chan_t  ( my_axi_r_chan_t  ),
+    .slv_req_t     ( axi_req_t      ),
+    .slv_resp_t    ( axi_resp_t     ),
+    .mst_req_t     ( axi_req_t      ),
+    .mst_resp_t    ( axi_resp_t     ),
+    .rule_t        ( axi_pkg::xbar_rule_32_t )
+  ) i_xbar (
+    .clk_i         ( clk ),
+    .rst_ni        ( rst_n ),
+    .test_i     ( 1'b0 ),
+    .slv_ports_req_i    ( xbar_slave_req ),
+    .slv_ports_resp_o   ( xbar_slave_resp ),
+    .mst_ports_req_o    ( xbar_master_req ),
+    .mst_ports_resp_i   ( xbar_master_resp ),
+    .addr_map_i         ( XbarAddrTable ), 
+    .en_default_mst_port_i ( '0 ),
+    .default_mst_port_i    ( '0 )
+  );
+
+  // Master 0 (Stimulus) -> Xbar Slave Port 0
+  assign xbar_slave_req[0]  = axi_req_i;
+  assign axi_resp_o         = xbar_slave_resp[0];
    
   // ---------------------------
   // Tiny SRAM model (behavioral)
