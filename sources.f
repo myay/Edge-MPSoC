@@ -1,5 +1,6 @@
 +incdir+../src
-+incdir+../include      
++incdir+../include
++incdir+.
 
 ../src/axi_pkg.sv
 ../common_cells_repo/src/cf_math_pkg.sv
@@ -154,4 +155,9 @@
 ../src/axi_id_remap.sv
 ../src/axi_from_mem.sv
 
+sram_behavioral.sv
+axi_sram_node.sv
+cpu_bfm.sv
+soc.sv
+soc_tb.sv
 top.sv
