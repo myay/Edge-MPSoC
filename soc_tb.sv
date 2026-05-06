@@ -52,18 +52,15 @@ module soc_tb;
   axi_resp_t tb_resp;
 
    soc #(
-        .axi_req_t   ( my_axi_req_t     ),
-        .axi_resp_t  ( my_axi_resp_t    ),
-        .aw_chan_t   ( my_axi_aw_chan_t ),
-        .w_chan_t    ( my_axi_w_chan_t  ),
-        .b_chan_t    ( my_axi_b_chan_t  ),
-        .ar_chan_t   ( my_axi_ar_chan_t ),
-        .r_chan_t    ( my_axi_r_chan_t  )
+        .SocAddrWidth (AXI_ADDR_WIDTH),
+        .SocDataWidth (AXI_DATA_WIDTH),
+        .SocIdWidth   (AXI_ID_WIDTH)
+        // REMOVED: .axi_req_t, .axi_resp_t, etc.
     ) i_soc (
-        .clk_i           (clk),
-        .rst_ni          (rst_n),
-        .ext_mst_req_i   (tb_req),  // TB drives this
-        .ext_mst_resp_o  (tb_resp)  // SOC drives this
+        .clk_i          (clk),
+        .rst_ni         (rst_n),
+        .ext_mst_req_i  (tb_req),
+        .ext_mst_resp_o (tb_resp)
     );
 
     initial begin
