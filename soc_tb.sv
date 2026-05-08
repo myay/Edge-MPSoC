@@ -15,7 +15,7 @@ module soc_tb;
    logic [63:0]	read_data; // Variable to store the result
 
    initial begin
-      $dumpfile("dump.vcd");
+      $dumpfile("dump.fst");
       $dumpvars(0, soc_tb); // Make sure this matches your TB module name
       rst_n = 0;
       #50 rst_n = 1;
