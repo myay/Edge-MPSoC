@@ -21,9 +21,9 @@ module soc #(
    // 5. The Return Path: The RAM response comes back through mst_resps[0] ->  Xbar $\rightarrow$ slv_resps[0] -> bfm_resp.
 
    // Arrays for Xbar
-   req_t  [0:0] slv_reqs;
-   resp_t [0:0] slv_resps;
-   req_t  [0:0] mst_reqs;
+   req_t  [1:0] slv_reqs; // two masters for now
+   resp_t [1:0] slv_resps;
+   req_t  [0:0] mst_reqs; // one slave for now
    resp_t [0:0] mst_resps;
 
    req_t  bfm_req;
@@ -55,7 +55,7 @@ module soc #(
 
    // Configuration struct for the Xbar
    localparam		    axi_pkg::xbar_cfg_t XbarCfg = '{
-							    NoSlvPorts:         32'd1,
+							    NoSlvPorts:         32'd2,
 							    NoMstPorts:         32'd1,
 							    MaxMstTrans:        4,
 							    MaxSlvTrans:        4,
@@ -120,4 +120,13 @@ module soc #(
 				     .axi_resp_o ( mst_resps[0] ),
 				     .busy_o     ( ) 
 				     );
+
+   npu_wrapper #(
+		 .NumMasters ( 1 ) // Only one master for now (the rd_dma)
+		 ) i_npu_top (
+			      .clk_i      ( clk_i ),
+			      .rst_ni     ( rst_ni ),
+			      .mst_req_o  ( slv_reqs[1] ),  // Connect NPU Master to Xbar Slave Port 1
+			      .mst_req_i  ( slv_resps[1] )
+			      );
 endmodule

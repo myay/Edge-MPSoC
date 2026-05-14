@@ -155,6 +155,8 @@
 ../src/axi_id_remap.sv
 ../src/axi_from_mem.sv
 
+axi_dma_rd.sv
+      
 sram_behavioral.sv
 axi_sram_node.sv
 cpu_bfm.sv
