@@ -13,9 +13,22 @@ module sram_behavioral #(
 			    output logic		  rvalid_o,
 			    output logic [DataWidth-1:0]  rdata_o
 			    );
-
+   
    logic [DataWidth-1:0]				  mem [MemDepth];
 
+   // initialize SRAM with data from text file
+   initial begin
+      $readmemh("/home/mikail/digital-design/interconnect/axi/own_axi_interconnect/sram_init.mem", mem);
+      #1; // Wait 1ns for the load to settle
+      // $display("--- SRAM LOAD CHECK ---");
+      // foreach (mem[i]) begin
+      // 	 if (mem[i] != 0) begin
+      //       $display("Index [%0d] contains: %h", i, mem[i]);
+      // 	 end
+      // end
+      // $display("-----------------------");
+   end
+   
    always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
          rvalid_o <= 1'b0;

@@ -75,6 +75,29 @@ module cpu_bfm (
       $display("[BFM @ %0t] <<< Read Complete! Data=%h", $time, data);
 
       @(posedge clk_i);
+   endtask // axi_read
+
+   // --- Read All Task (Optimized for 64-bit) ---
+   task automatic read_all(
+			   input logic [31:0] start_addr, // Addr width 32
+			   input int	      num_words   // How many 64-bit words to read
+			   );
+      logic [63:0]			      temp_data;          // Data width 64
+      logic [31:0]			      current_addr;
+
+      $display("[BFM @ %0t] === STARTING 64-BIT SRAM DUMP ===", $time);
+
+      for (int i = 0; i < num_words; i++) begin
+         // Increment by 8 bytes per 64-bit word
+         current_addr = start_addr + (i * 8); 
+         
+         axi_read(current_addr, temp_data);
+         
+         $display("[BFM @ %0t] Word %0d | Addr: 0x%h | Data: 0x%h_%h", 
+                  $time, i, current_addr, temp_data[63:32], temp_data[31:0]);
+      end
+
+      $display("[BFM @ %0t] === 64-BIT SRAM DUMP COMPLETE ===", $time);
    endtask
 
 endmodule

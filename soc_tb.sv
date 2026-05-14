@@ -36,6 +36,11 @@ module soc_tb;
       end else begin
          $display("[TB] ERROR: Data mismatch! Expected DEADBEEFCAFEBABE, Got %h", read_data);
       end
+
+      #100;
+      
+      // Read the first 128 words (64-bit each) of the SRAM
+      i_soc.i_cpu_bfm.read_all(32'h0000_0000, 64);
       
       #5000;
       $display("Simulation limit reached. Ending...");
