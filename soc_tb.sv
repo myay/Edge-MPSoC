@@ -88,6 +88,25 @@ module soc_tb;
 		  .ext_mst_resp_o (tb_resp)
 		  );
 
+   // debug wires
+   // --- AXI Side (Bridge Output to Interconnect) ---
+   logic				      bridge_axi_rvalid;
+   logic [63:0]				      bridge_axi_rdata;
+   assign bridge_axi_rvalid = i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r_valid;
+   assign bridge_axi_rdata  = i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r.data;
+
+   // --- SRAM Side (Bridge Input from RAM) ---
+   logic				      bridge_mem_req;    // Did the bridge ask the RAM for data?
+   logic				      bridge_mem_rvalid; // Did the RAM give data back to the bridge?
+   logic [63:0]				      bridge_mem_rdata;
+   assign bridge_mem_req    = i_soc.i_ram_slave_0.i_bridge.mem_req_o;
+   assign bridge_mem_rvalid = i_soc.i_ram_slave_0.i_bridge.mem_rvalid_i;
+   assign bridge_mem_rdata  = i_soc.i_ram_slave_0.i_bridge.mem_rdata_i;
+
+   // data arriving at the cpu
+   logic [63:0] cpu_view_data;
+   assign cpu_view_data = i_soc.i_cpu_bfm.ext_mst_resp_i.r.data;
+   
    // always @(posedge clk) begin
    //    $display("[WIRE_CHECK @ %0t] AWVALID=%b, AWREADY=%b, WVALID=%b, WREADY=%b, RST_N=%b", 
    // 	       $time, tb_req.aw_valid, tb_resp.aw_ready, tb_req.w_valid, tb_resp.w_ready, rst_n);

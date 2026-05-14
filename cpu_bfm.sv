@@ -59,7 +59,7 @@ module cpu_bfm (
 			   output logic [TB_DATA_W-1:0]	data
 			   );
       $display("[BFM @ %0t] >>> Starting Read: Addr=%h", $time, addr);
-
+      req.ar.id    = 4'hA; // Give it a specific ID (like 'A' for Alpha)
       @(posedge clk_i);
       req.ar.addr  = addr;
       req.ar_valid = 1'b1;

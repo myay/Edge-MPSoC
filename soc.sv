@@ -121,6 +121,7 @@ module soc #(
 				     .busy_o     ( ) 
 				     );
 
+   
    npu_wrapper #(
 		 .NumMasters ( 1 ) // Only one master for now (the rd_dma)
 		 ) i_npu_top (
