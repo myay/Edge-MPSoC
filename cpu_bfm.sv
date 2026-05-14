@@ -13,12 +13,16 @@ module cpu_bfm (
    req_t req;
    assign ext_mst_req_o = req;
 
+   // Hardcode the Address Read ID to 1
+   //assign ext_mst_req_o[0].ar.id = 4'h1;
+
    // Initialization
    initial begin
       req = '0;
       // Default ready signals for response channels
       req.b_ready = 1'b1; 
       req.r_ready = 1'b1;
+      //req.ar.id = 4'h1;
    end
 
    task automatic axi_write(
@@ -28,6 +32,7 @@ module cpu_bfm (
       $display("[BFM @ %0t] >>> STARTING WRITE TASK", $time); // Is this printing??
 
       @(posedge clk_i);
+      //req.ar.id = 4'h1;
       req.aw.addr  = addr;
       req.aw_valid = 1'b1;
       req.w.data   = data;
@@ -59,7 +64,7 @@ module cpu_bfm (
 			   output logic [TB_DATA_W-1:0]	data
 			   );
       $display("[BFM @ %0t] >>> Starting Read: Addr=%h", $time, addr);
-      req.ar.id    = 4'hA; // Give it a specific ID (like 'A' for Alpha)
+      //req.ar.id    = 4'hA; // Give it a specific ID (like 'A' for Alpha)
       @(posedge clk_i);
       req.ar.addr  = addr;
       req.ar_valid = 1'b1;

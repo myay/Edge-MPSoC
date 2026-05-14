@@ -1,5 +1,7 @@
 module npu_wrapper #(
-		     parameter int unsigned NumMasters = 1 // Define how many you want
+		     parameter int unsigned NumMasters = 1, // Define how many you want
+		     parameter		    type axi_req_t = logic, 
+		     parameter		    type axi_resp_t = logic
 		     )(
 		       input logic clk_i,
 		       input logic rst_ni,
@@ -8,10 +10,89 @@ module npu_wrapper #(
 		       // input	   req_t slv_req_i,
 		       // output	   resp_t slv_req_o,
 
-		       // AXI Masters (Now an ARRAY)
+		       // AXI Masters (data path, connects to xbar)
 		       output	   req_t [NumMasters-1:0] mst_req_o,
 		       input	   resp_t [NumMasters-1:0] mst_req_i
 		       );
+
+   // --- Hardcoded Descriptor for Initial Research Testing ---
+   // This allows the DMA to start fetching data immediately for debugging
+   logic [31:0]			   dma_addr  = 32'h0000_0000; // Matches SRAM start address
+   logic [19:0]			   dma_len   = 20'd256;       // Fetching 128 bytes
+   logic			   dma_valid = 1'b0;          // Pulse this testbench to start
+
+
+   // Hardcode the Address Read ID to 2
+   assign mst_req_o[0].ar.id = 4'h2;
+
+   // get data from sram
+   // dma adress
+   logic rdma_valid_internal /* verilator public_flat */;
+   assign dma_valid = rdma_valid_internal;
+
+
+   
+   //-------------------------------------------------------------------------
+   // AXI Read DMA Instance
+   //-------------------------------------------------------------------------
+   axi_dma_rd #(
+		.AXI_DATA_WIDTH    ( 64 ),               // Matches SocDataWidth
+		.AXI_ADDR_WIDTH    ( 32 ),               // Matches SocAddrWidth
+		.AXI_ID_WIDTH      ( 2  ),               // Small ID for internal master
+		.AXIS_DATA_WIDTH   ( 64 ),               // Stream width matches bus width
+		.LEN_WIDTH         ( 20 ),
+		.TAG_WIDTH         ( 8  ),
+		.ENABLE_SG         ( 0  ),               // No Scatter/Gather for now
+		.ENABLE_UNALIGNED  ( 0  )                // Assume word-aligned transfers
+		) i_axi_dma_rd (
+				.clk                       ( clk_i   ),
+				.rst                       ( !rst_ni ), // Forencich DMA uses active-high reset
+
+				/* AXI read descriptor input */
+				.s_axis_read_desc_addr     ( dma_addr  ),
+				.s_axis_read_desc_len      ( dma_len   ),
+				.s_axis_read_desc_tag      ( 8'h00     ),
+				.s_axis_read_desc_id       ( 8'h02     ),
+				.s_axis_read_desc_dest     ( 8'h00     ),
+				.s_axis_read_desc_user     ( 1'b0      ),
+				.s_axis_read_desc_valid    ( dma_valid ),
+				.s_axis_read_desc_ready    (           ), 
+
+				/* AXI stream read data output (Input to NPU Logic) */
+				.m_axis_read_data_tdata    ( /* Connect to your NPU Core Data */ ),
+				.m_axis_read_data_tvalid   ( /* Connect to your NPU Core Valid */ ),
+				.m_axis_read_data_tready   ( 1'b1 ), // Assume core is always ready
+				.m_axis_read_data_tkeep    ( ),
+				.m_axis_read_data_tlast    ( ),
+
+				/* AXI master interface mapping to structs */
+				.m_axi_arid                ( mst_req_o[0].ar.id     ),
+				.m_axi_araddr              ( mst_req_o[0].ar.addr   ),
+				.m_axi_arlen               ( mst_req_o[0].ar.len    ),
+				.m_axi_arsize              ( mst_req_o[0].ar.size   ),
+				.m_axi_arburst             ( mst_req_o[0].ar.burst  ),
+				.m_axi_arlock              ( mst_req_o[0].ar.lock   ),
+				.m_axi_arcache             ( mst_req_o[0].ar.cache  ),
+				.m_axi_arprot              ( mst_req_o[0].ar.prot   ),
+				.m_axi_arvalid             ( mst_req_o[0].ar_valid  ),
+				.m_axi_arready             ( mst_req_i[0].ar_ready  ),
+				.m_axi_rid                 ( mst_req_i[0].r.id      ),
+				.m_axi_rdata               ( mst_req_i[0].r.data    ),
+				.m_axi_rresp               ( mst_req_i[0].r.resp    ),
+				.m_axi_rlast               ( mst_req_i[0].r.last    ),
+				.m_axi_rvalid              ( mst_req_i[0].r_valid   ),
+				.m_axi_rready              ( mst_req_o[0].r_ready   ),
+
+				.enable                    ( 1'b1    )
+				);
+
+   // --- Structural Tie-offs ---
+   // The Read DMA does not use Write (AW/W) channels
+   assign mst_req_o[0].aw_valid = 1'b0;
+   assign mst_req_o[0].w_valid  = 1'b0;
+   assign mst_req_o[0].b_ready  = 1'b1;
+
+   
    // Your DMA and Systolic Array logic goes here
    // use forenchic's dma engine AXI4 to stream and stream to axi4
    // axi_dma_rd.v (The "Feeder"): Give it start address and length (via slave csrs) and it sucks data out of RAM and pushes it to NPU stream, axi stream (output) connects to NPU 
@@ -73,7 +154,7 @@ module npu_wrapper #(
    // 				.s_axis_read_desc_len   ( reg_transfer_len     ),
    // 				.s_axis_read_desc_valid ( reg_start_trigger    ),
    // 				.s_axis_read_desc_ready ( /* status monitor */ ),
-				
+   
    // 				/* AXI Stream Output (To your Systolic Array) */
    // 				.m_axis_read_data_tdata ( /* connect to NPU weight port */ ),
    // 				.m_axis_read_data_tvalid( /* connect to NPU weight valid*/ ),

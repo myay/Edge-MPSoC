@@ -123,7 +123,9 @@ module soc #(
 
    
    npu_wrapper #(
-		 .NumMasters ( 1 ) // Only one master for now (the rd_dma)
+		 .NumMasters ( 1 ), // Only one master for now (the rd_dma)
+		 .axi_req_t ( req_t        ), 
+		 .axi_resp_t( resp_t       )
 		 ) i_npu_top (
 			      .clk_i      ( clk_i ),
 			      .rst_ni     ( rst_ni ),

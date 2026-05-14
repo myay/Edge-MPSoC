@@ -38,9 +38,23 @@ module soc_tb;
       end
 
       #100;
-      
+      $display("[TB] Start read all...");
       // Read the first 128 words (64-bit each) of the SRAM
       i_soc.i_cpu_bfm.read_all(32'h0000_0000, 64);
+
+      //////
+      
+      # 1000;
+      $display("[TB] Starting NPU rmda...");
+      // Trigger a read from NPU, source is SRAM
+      i_soc.i_npu_top.rdma_valid_internal = 1'b1;
+      
+      #100;
+      
+      //@(posedge clk);
+      i_soc.i_npu_top.rdma_valid_internal = 1'b0;
+      $display("[TB] End NPU rmda...");
+
       
       #5000;
       $display("Simulation limit reached. Ending...");
@@ -111,4 +125,52 @@ module soc_tb;
    //    $display("[WIRE_CHECK @ %0t] AWVALID=%b, AWREADY=%b, WVALID=%b, WREADY=%b, RST_N=%b", 
    // 	       $time, tb_req.aw_valid, tb_resp.aw_ready, tb_req.w_valid, tb_resp.w_ready, rst_n);
    // end
+
+   initial begin : simplified_id_tracker
+      $display("[MONITOR] ID Tracking Started: CPU=1, NPU=2");
+      forever @(posedge clk) begin
+         
+         // 1. Track NPU Requests
+         if (i_soc.i_npu_top.mst_req_o[0].ar_valid && i_soc.i_npu_top.mst_req_i[0].ar_ready) begin
+            $display("[%0t] >> REQ: NPU issued Read with ID=%0h", $time, i_soc.i_npu_top.mst_req_o[0].ar.id);
+         end
+
+         // 2. Track NPU Responses
+         if (i_soc.i_npu_top.mst_req_i[0].r_valid && i_soc.i_npu_top.mst_req_o[0].r_ready) begin
+            $display("[%0t] << RESP: NPU received Data with ID=%0h", $time, i_soc.i_npu_top.mst_req_i[0].r.id);
+         end
+
+	 // 3. Track CPU Responses (To see if it's "stealing" NPU data)
+         //if (i_soc.cpu_mst_resp.r_valid && i_soc.cpu_mst_req.r_ready) begin
+         //   if (i_soc.cpu_mst_resp.r.id == 4'h2) begin
+         //      $display("[%0t] !!! ALERT: CPU port just received ID=2 (NPU Data)!", $time);
+         //   end
+         // end
+
+	 if (i_soc.i_npu_top.mst_req_i[0].r_valid && i_soc.i_npu_top.mst_req_o[0].r_ready) begin
+            $display("[%0t] << DATA RECEIVED: ID=%0h | Data=%h | Last=%b", 
+                     $time, 
+                     i_soc.i_npu_top.mst_req_i[0].r.id, 
+                     i_soc.i_npu_top.mst_req_i[0].r.data,
+                     i_soc.i_npu_top.mst_req_i[0].r.last);
+         end
+
+
+	 // Check if the Interconnect is trying to give data to the NPU
+	 if (i_soc.i_npu_top.mst_req_i[0].r_valid) begin
+            if (i_soc.i_npu_top.mst_req_o[0].r_ready) begin
+               $display("[%0t] [HANDSHAKE] SUCCESS: NPU accepted data.", $time);
+            end else begin
+               $display("[%0t] [HANDSHAKE] STALL: Xbar has data (RVALID), but NPU is NOT READY (RREADY=0)!", $time);
+            end
+	 end
+
+	 if (i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r_valid) begin
+            $display("[%0t] [BRIDGE] Response Leaving Bridge: RID=%0h, Data=%h", 
+                     $time, i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r.id, i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r.data);
+	 end
+
+	 
+      end
+   end
 endmodule
