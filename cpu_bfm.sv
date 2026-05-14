@@ -5,12 +5,13 @@ module cpu_bfm (
 		input logic clk_i,
 		input logic rst_ni,
 		// Using the types defined in the included header
-		output	    req_t ext_mst_req_o,
-		input	    resp_t ext_mst_resp_i
+		output	    slv_req_t ext_mst_req_o,
+		input	    slv_resp_t ext_mst_resp_i
 		);
 
    // Internal register to drive the output
-   req_t req;
+   slv_req_t  req;  // Using the 4-bit ID type for the CPU Master
+   slv_resp_t resp;
    assign ext_mst_req_o = req;
 
    // Hardcode the Address Read ID to 1

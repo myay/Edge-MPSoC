@@ -66,7 +66,7 @@ module soc_tb;
    localparam int unsigned AXI_ADDR_WIDTH = 32;
    localparam int unsigned AXI_DATA_WIDTH = 64;
    localparam int unsigned AXI_ID_WIDTH   = 4;
-   localparam int unsigned AXI_USER_WIDTH = 1;
+   localparam int unsigned AXI_USER_WIDTH = 4;
    localparam int unsigned NUM_BANKS      = 1;
 
    // ---------------------------
@@ -87,19 +87,26 @@ module soc_tb;
    // ---------------------------
    // Signals
    // ---------------------------
-   axi_req_t  tb_req;
-   axi_resp_t tb_resp;
+   // Define the req/resp arrays using the NEW mst_req_t types
+   mst_req_t  [0:0] slv_reqs;  // Output from SoC to Memory
+   mst_resp_t [0:0] slv_resps; // Input from Memory to SoC
 
    soc #(
-         .SocAddrWidth (AXI_ADDR_WIDTH),
-         .SocDataWidth (AXI_DATA_WIDTH),
-         .SocIdWidth   (AXI_ID_WIDTH)
-         // REMOVED: .axi_req_t, .axi_resp_t, etc.
+         .SocAddrWidth ( AXI_ADDR_WIDTH ),
+         .SocDataWidth ( AXI_DATA_WIDTH ),
+         .SocIdWidth   ( AXI_ID_WIDTH   ) 
 	 ) i_soc (
-		  .clk_i          (clk),
-		  .rst_ni         (rst_n),
-		  .ext_mst_req_i  (tb_req),
-		  .ext_mst_resp_o (tb_resp)
+		  .clk_i            ( clk    ),
+		  .rst_ni           ( rst_n  ),
+
+		  // 1. Ports for an external Master (NOT used for your SRAM bridge)
+		  .ext_mst_req_i    ( '0     ), // Tie to zero if no external master
+		  .ext_mst_resp_o   (        ), // Leave open
+
+		  // 2. Ports going to your external Slave (This is your SRAM Bridge)
+		  // These use the 'mst' (5-bit ID) types to ensure routing works.
+		  .ext_slv_req_o    ( slv_reqs[0]  ), 
+		  .ext_slv_resp_i   ( slv_resps[0] )
 		  );
 
    // debug wires
@@ -131,13 +138,13 @@ module soc_tb;
       forever @(posedge clk) begin
          
          // 1. Track NPU Requests
-         if (i_soc.i_npu_top.mst_req_o[0].ar_valid && i_soc.i_npu_top.mst_req_i[0].ar_ready) begin
-            $display("[%0t] >> REQ: NPU issued Read with ID=%0h", $time, i_soc.i_npu_top.mst_req_o[0].ar.id);
+         if (i_soc.i_npu_top.mst_req_o.ar_valid && i_soc.i_npu_top.mst_resp_i.ar_ready) begin
+            $display("[%0t] >> REQ: NPU issued Read with ID=%0h", $time, i_soc.i_npu_top.mst_req_o.ar.id);
          end
 
          // 2. Track NPU Responses
-         if (i_soc.i_npu_top.mst_req_i[0].r_valid && i_soc.i_npu_top.mst_req_o[0].r_ready) begin
-            $display("[%0t] << RESP: NPU received Data with ID=%0h", $time, i_soc.i_npu_top.mst_req_i[0].r.id);
+         if (i_soc.i_npu_top.mst_resp_i.r_valid && i_soc.i_npu_top.mst_req_o.r_ready) begin
+            $display("[%0t] << RESP: NPU received Data with ID=%0h", $time, i_soc.i_npu_top.mst_resp_i.r.id);
          end
 
 	 // 3. Track CPU Responses (To see if it's "stealing" NPU data)
@@ -147,18 +154,18 @@ module soc_tb;
          //   end
          // end
 
-	 if (i_soc.i_npu_top.mst_req_i[0].r_valid && i_soc.i_npu_top.mst_req_o[0].r_ready) begin
+	 if (i_soc.i_npu_top.mst_resp_i.r_valid && i_soc.i_npu_top.mst_req_o.r_ready) begin
             $display("[%0t] << DATA RECEIVED: ID=%0h | Data=%h | Last=%b", 
                      $time, 
-                     i_soc.i_npu_top.mst_req_i[0].r.id, 
-                     i_soc.i_npu_top.mst_req_i[0].r.data,
-                     i_soc.i_npu_top.mst_req_i[0].r.last);
+                     i_soc.i_npu_top.mst_resp_i.r.id, 
+                     i_soc.i_npu_top.mst_resp_i.r.data,
+                     i_soc.i_npu_top.mst_resp_i.r.last);
          end
 
 
 	 // Check if the Interconnect is trying to give data to the NPU
-	 if (i_soc.i_npu_top.mst_req_i[0].r_valid) begin
-            if (i_soc.i_npu_top.mst_req_o[0].r_ready) begin
+	 if (i_soc.i_npu_top.mst_resp_i.r_valid) begin
+            if (i_soc.i_npu_top.mst_req_o.r_ready) begin
                $display("[%0t] [HANDSHAKE] SUCCESS: NPU accepted data.", $time);
             end else begin
                $display("[%0t] [HANDSHAKE] STALL: Xbar has data (RVALID), but NPU is NOT READY (RREADY=0)!", $time);
@@ -169,7 +176,6 @@ module soc_tb;
             $display("[%0t] [BRIDGE] Response Leaving Bridge: RID=%0h, Data=%h", 
                      $time, i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r.id, i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r.data);
 	 end
-
 	 
       end
    end
