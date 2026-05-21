@@ -47,6 +47,8 @@ module soc_tb;
       # 1000;
       $display("[TB] Starting NPU rmda...");
       // Trigger a read from NPU, source is SRAM
+      i_soc.i_npu_top.rdma_addr = 32'h0000_0010;
+      i_soc.i_npu_top.rdma_len = 20'd63; // set bytes to receive
       i_soc.i_npu_top.rdma_valid_internal = 1'b1;
       
       //#100;

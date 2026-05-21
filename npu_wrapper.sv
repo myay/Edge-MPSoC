@@ -18,10 +18,10 @@ module npu_wrapper #(
 		       );
 
    // --- Hardcoded Descriptor for Initial Research Testing ---
-   // This allows the DMA to start fetching data immediately for debugging
-   logic [31:0]			   dma_addr  = 32'h0000_0000; // Matches SRAM start address
-   logic [19:0]			   dma_len   = 20'd31;       // Represents the number of bytes in for this DMA. Divide this value by 8 to get the number of beats. Usually it is beats (axi beats = arlen+1)
-   logic			   dma_valid = 1'b0;          // Pulse this testbench to start
+   // This allows the RDMA to start fetching data immediately for debugging
+   logic [31:0]			   rdma_addr  = 32'h0000_0000; // Matches SRAM start address
+   logic [19:0]			   rdma_len   = 20'd31;       // Represents the number of bytes in for this DMA. Divide this value by 8 to get the number of beats. Usually it is beats (axi beats = arlen+1)
+   logic			   rdma_valid = 1'b0;          // Pulse this testbench to start
 
 
    // Hardcode the Address Read ID to 2
@@ -30,18 +30,18 @@ module npu_wrapper #(
    // get data from sram
    // dma adress
    logic rdma_valid_internal /* verilator public_flat */;
-   assign dma_valid = rdma_valid_internal;
+   assign rdma_valid = rdma_valid_internal;
    logic rdma_tready_internal;
-   assign dma_tready = rdma_valid_internal;
+   assign rdma_tready = rdma_valid_internal;
    
    initial begin
       forever @(posedge clk_i) begin
-         if (debug_dma_status_valid) begin
-            if (debug_dma_status_error == 4'h0) begin
-               $display("[%0t] [DMA_OK] Transfer with Tag %0h finished successfully.", $time, debug_dma_status_tag);
+         if (debug_rdma_status_valid) begin
+            if (debug_rdma_status_error == 4'h0) begin
+               $display("[%0t] [RDMA_OK] Transfer with Tag %0h finished successfully.", $time, debug_rdma_status_tag);
             end else begin
-               $display("[%0t] [DMA_ERROR] Transfer Tag %0h failed with Error Code: %0h", 
-                        $time, debug_dma_status_tag, debug_dma_status_error);
+               $display("[%0t] [RDMA_ERROR] Transfer Tag %0h failed with Error Code: %0h", 
+                        $time, debug_rdma_status_tag, debug_rdma_status_error);
             end
          end
       end
@@ -49,16 +49,16 @@ module npu_wrapper #(
 
    
    // --- Internal NPU Signals ---
-   logic dma_desc_ready;    // Backpressure from DMA to your config logic
+   logic rdma_desc_ready;    // Backpressure from DMA to your config logic
    logic [63:0]	npu_core_data;     // Payload for your BNN/QNN compute
    logic	npu_core_valid;    // High when data is ready for the core
    logic	npu_core_ready;    // Core handshake (Connect to your core's FIFO/input)
    logic [7:0]	npu_core_keep;     // Byte qualifiers (64-bit = 8 bytes)
    logic	npu_core_last;     // End of weight block indicator
 
-   logic [7:0]  debug_dma_status_tag;   // Captures the tag of the finished transfer
-   logic [3:0]	debug_dma_status_error; // 4-bit error code (e.g., 2=Slave Error, 3=Decode Error)
-   logic	debug_dma_status_valid; // Pulses high for one cycle when status is ready
+   logic [7:0]  debug_rdma_status_tag;   // Captures the tag of the finished transfer
+   logic [3:0]	debug_rdma_status_error; // 4-bit error code (e.g., 2=Slave Error, 3=Decode Error)
+   logic	debug_rdma_status_valid; // Pulses high for one cycle when status is ready
    
    axi_dma_rd #(
 		.AXI_DATA_WIDTH    ( 64 ),
@@ -75,17 +75,17 @@ module npu_wrapper #(
 
 				/* AXI read descriptor input (Control Path) */
 				// control (address to start, how many bytes, id, etc
-				.s_axis_read_desc_addr     ( dma_addr       ),
-				.s_axis_read_desc_len      ( dma_len        ),
+				.s_axis_read_desc_addr     ( rdma_addr       ),
+				.s_axis_read_desc_len      ( rdma_len        ),
 				.s_axis_read_desc_tag      ( 8'h02          ),
 				.s_axis_read_desc_id       ( 8'h02          ), // Your NPU ID
 				.s_axis_read_desc_dest     ( 8'h00          ),
 				.s_axis_read_desc_user     ( 1'b0           ),
-				.s_axis_read_desc_valid    ( dma_valid      ), // asserted by own logic that the command is valid (set in tb)
-				.s_axis_read_desc_ready    ( dma_desc_ready ), // asserted by DMA to indicate it has room ro queue for new request
-				.m_axis_read_desc_status_tag  (debug_dma_status_tag),
-				.m_axis_read_desc_status_error(debug_dma_status_error),
-				.m_axis_read_desc_status_valid(debug_dma_status_valid),
+				.s_axis_read_desc_valid    ( rdma_valid      ), // asserted by own logic that the command is valid (set in tb)
+				.s_axis_read_desc_ready    ( rdma_desc_ready ), // asserted by DMA to indicate it has room ro queue for new request
+				.m_axis_read_desc_status_tag  (debug_rdma_status_tag),
+				.m_axis_read_desc_status_error(debug_rdma_status_error),
+				.m_axis_read_desc_status_valid(debug_rdma_status_valid),
 				/* AXI stream read data output (Data Path to NPU Logic) into NPU */
 				.m_axis_read_data_tdata     ( npu_core_data  ), 
 				.m_axis_read_data_tvalid    ( npu_core_valid ), // NEEDS TO BE HIGH for success
