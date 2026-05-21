@@ -1,3 +1,7 @@
+`include "axi_typedefs.svh"
+import axi_pkg::*;
+import npu_wrapper_regs_pkg::*;
+
 module npu_wrapper #(
 		     parameter int unsigned NumMasters = 1, // Define how many you want
 		     parameter		    type axi_req_t = logic, 
@@ -126,6 +130,17 @@ module npu_wrapper #(
    assign mst_req_o.aw_valid = 1'b0;
    assign mst_req_o.w_valid  = 1'b0;
    assign mst_req_o.b_ready  = 1'b1;
+
+   // register instantiation
+   // --- Instantiate the Register Module ---
+   npu_wrapper_regs i_npu_wrapper_regs (
+					.clk      ( clk_i          ),
+					.rst      ( !rst_ni        ) // PeakRDL active-high reset
+					//.s_axil (),
+					//.hwif_out()
+					//.s_axil   ( s_axil_config  ), // Directly connect the incoming SV interface
+					//.hwif_out ( regs_hwif_out  )  // Internal wiring struct
+					);
 
    
    // Systolic Array logic goes here

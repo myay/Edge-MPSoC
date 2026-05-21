@@ -155,7 +155,11 @@
 ../src/axi_id_remap.sv
 ../src/axi_from_mem.sv
 
+// npu  
+./modules/npu_wrapper/regs/generated/npu_wrapper_regs_pkg.sv   
+./modules/npu_wrapper/regs/generated/npu_wrapper_regs.sv
 axi_dma_rd.sv
+npu_wrapper.sv 
       
 sram_behavioral.sv
 axi_sram_node.sv
