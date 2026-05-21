@@ -47,4 +47,15 @@ typedef soc_mst_ar_chan_t mst_ar_chan_t;
 typedef soc_mst_b_chan_t  mst_b_chan_t;
 typedef soc_mst_r_chan_t  mst_r_chan_t;
 
+// --- 3. AXI lite
+`AXI_LITE_TYPEDEF_ALL(
+		      my_axil_bus,                             // Prefix name
+		      logic [TB_ADDR_W-1:0],                   // Parameterized Address width type
+		      logic [TB_DATA_W-1:0],                   // Parameterized Data width type
+		      logic [(TB_DATA_W/8)-1:0]                // Parameterized Write Strobe width type
+		      )
+
+typedef my_axil_bus_req_t  axi_lite_req_t;
+typedef my_axil_bus_resp_t axi_lite_resp_t;
+
 `endif

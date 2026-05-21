@@ -1,7 +1,8 @@
 `include "axi_typedefs.svh"
 import axi_pkg::*;
 import npu_wrapper_regs_pkg::*;
-
+// TODOs
+// Instead of hardcoding, use params in a certain headerfile (axi_typedefs) or create a soc config file that all modules get the param values from
 module npu_wrapper #(
 		     parameter int unsigned NumMasters = 1, // Define how many you want
 		     parameter		    type axi_req_t = logic, 
@@ -142,6 +143,39 @@ module npu_wrapper #(
 					//.hwif_out ( regs_hwif_out  )  // Internal wiring struct
 					);
 
+   // axi to axi lite instantiation
+   // --- Local AXI-Lite Struct Wires ---
+   // These match the interface types expected by the PULP converter module
+   axi_lite_req_t  axil_req;
+   axi_lite_resp_t axil_resp;
+
+   // --- Config Path Down-Converter (AXI4 to AXI4-Lite) ---
+   axi_to_axi_lite #(
+		     .AxiAddrWidth    ( 32              ),
+		     .AxiDataWidth    ( 64              ), // Adjust matching your cluster config
+		     .AxiIdWidth      ( 4               ), // Adjust matching your cluster config
+		     .AxiUserWidth    ( 1               ), 
+		     .AxiMaxWriteTxns ( 2               ), // Safe default baseline
+		     .AxiMaxReadTxns  ( 2               ), // Safe default baseline
+		     .FullBW          ( 1'b0            ),
+		     .FallThrough     ( 1'b1            ),
+		     .full_req_t      ( slv_req_t       ), // The packed full-AXI struct type from your project
+		     .full_resp_t     ( slv_resp_t      ), // The packed full-AXI struct type from your project
+		     .lite_req_t      ( axi_lite_req_t      ), // Your AXI-Lite request struct type
+		     .lite_resp_t     ( axi_lite_resp_t     )  // Your AXI-Lite response struct type
+		     ) i_config_axi_to_lite (
+					     .clk_i           ( clk_i           ),
+					     .rst_ni          ( rst_ni          ),
+					     .test_i          ( 1'b0            ), // Tie off testmode for normal operation
+					     
+					     // Slave port: Connects to your wrapper's incoming config bus
+					     .slv_req_i       ( slv_req_i       ),
+					     .slv_resp_o      ( slv_resp_o      ),
+					     
+					     // Master port: Connects to our local intermediate struct wires
+					     .mst_req_o       ( axil_req        ),
+					     .mst_resp_i      ( axil_resp       )
+					     );
    
    // Systolic Array logic goes here
    // use forenchic's dma engine AXI4 to stream and stream to axi4
