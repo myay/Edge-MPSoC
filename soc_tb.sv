@@ -49,10 +49,15 @@ module soc_tb;
       // Trigger a read from NPU, source is SRAM
       i_soc.i_npu_top.rdma_valid_internal = 1'b1;
       
-      #100;
-      
+      //#100;
+      // wait dynamically until DMA signals it is ready tp accept the command
+      do begin
+         @(posedge clk);
+      end while (!i_soc.i_npu_top.i_axi_dma_rd.s_axis_read_desc_ready);
       //@(posedge clk);
       i_soc.i_npu_top.rdma_valid_internal = 1'b0;
+
+      // Note: Because valid is high for exactly the single clock cycle where ready was also high, the Forencich DMA will consume exactly one descriptor command. It won't see a lingering high signal on the next cycle
       $display("[TB] End NPU rmda...");
 
       
