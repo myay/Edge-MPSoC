@@ -19,6 +19,8 @@ module npu_wrapper #(
 
    // --- Hardcoded Descriptor for Initial Research Testing ---
    // This allows the RDMA to start fetching data immediately for debugging
+   // TODO: put these three values into regfile, writable via APB from the CPU
+   // use peakrdl
    logic [31:0]			   rdma_addr  = 32'h0000_0000; // Matches SRAM start address
    logic [19:0]			   rdma_len   = 20'd31;       // Represents the number of bytes in for this DMA. Divide this value by 8 to get the number of beats. Usually it is beats (axi beats = arlen+1)
    logic			   rdma_valid = 1'b0;          // Pulse this testbench to start
