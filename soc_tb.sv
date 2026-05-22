@@ -49,7 +49,7 @@ module soc_tb;
 
       // 1. Write the Source SRAM Base Address to REG_RDMA_ADDR (Offset 0x0)
       // Base (32'h0001_0000) + 0x0 = 32'h0001_0000 | Data = 32'h0000_0010
-      i_soc.i_cpu_bfm.axi_write(32'h0001_0000, 64'h0000_0000_0000_0010);
+      i_soc.i_cpu_bfm.axi_write(32'h0001_0000, 64'h0000_0000_0000_00BB);
 
       // 2. Write the transfer length (63 bytes) to REG_RDMA_LEN (Offset 0x4)
       // Base (32'h0001_0000) + 0x4 = 32'h0001_0004 | Data = 20'd63 (32'h0000_003F)
@@ -63,7 +63,19 @@ module soc_tb;
       // It pulses high for exactly 1 cycle when the AXI write transaction completes, 
       // satisfying the Forencich DMA engine command ingestion perfectly.
       i_soc.i_cpu_bfm.axi_write(32'h0001_0008, 64'h0000_0000_0000_0001);
+      /// ***temporary
+      // $display("[TB] Bypassing AXI to manually force NPU registers...");
 
+      // // Manually force the internal register logic inside the wrapper
+      // i_soc.i_npu_top.rdma_addr = 32'h0000_0010;
+      // i_soc.i_npu_top.rdma_len  = 20'd63;
+      // i_soc.i_npu_top.rdma_valid = 1'b1; 
+      // do begin
+      //    @(posedge clk);
+      // end while (!i_soc.i_npu_top.i_axi_dma_rd.s_axis_read_desc_ready);
+
+      // $display("[TB] Force complete. Checking for DMA startup...");
+      // /// *** temporary
       $display("[TB] End NPU rdma configuration.");
 
       #5000;
@@ -107,16 +119,7 @@ module soc_tb;
          .SocIdWidth   ( AXI_ID_WIDTH   ) 
 	 ) i_soc (
 		  .clk_i            ( clk    ),
-		  .rst_ni           ( rst_n  ),
-
-		  // 1. Ports for an external Master (NOT used for your SRAM bridge)
-		  .ext_mst_req_i    ( '0     ), // Tie to zero if no external master
-		  .ext_mst_resp_o   (        ), // Leave open
-
-		  // 2. Ports going to your external Slave (This is your SRAM Bridge)
-		  // These use the 'mst' (5-bit ID) types to ensure routing works.
-		  .ext_slv_req_o    ( slv_reqs[0]  ), 
-		  .ext_slv_resp_i   ( slv_resps[0] )
+		  .rst_ni           ( rst_n  )
 		  );
 
    // debug wires
@@ -146,7 +149,12 @@ module soc_tb;
    initial begin : simplified_id_tracker
       $display("[MONITOR] ID Tracking Started: CPU=1, NPU=2");
       forever @(posedge clk) begin
-         
+
+	 if (i_soc.slv_reqs[0].aw_valid) begin
+            $display("[TB_AUDIT @ %0t] AW_VALID SEEN! Bus raw address value is: 0x%h", 
+                     $time, i_soc.slv_reqs[0].aw.addr);
+         end
+	 
          // 1. Track NPU Requests
          if (i_soc.i_npu_top.mst_req_o.ar_valid && i_soc.i_npu_top.mst_resp_i.ar_ready) begin
             $display("[%0t] >> REQ: NPU issued Read with ID=%0h", $time, i_soc.i_npu_top.mst_req_o.ar.id);
