@@ -53,18 +53,26 @@ module soc #(
    // 2. AXI Interconnect (Xbar)
    // ---------------------------
    // Define the Address Map (SRAM at 0x0000_0000 - 0x0000_FFFF)
-   localparam		    axi_pkg::xbar_rule_32_t [0:0] AddrTable = '{
+   localparam		    axi_pkg::xbar_rule_32_t [1:0] AddrTable = '{
+									// Existing Port Index 0 (e.g., Main Memory or Main Downstream Bus)
 									'{
 									  idx:        32'd0, 
 									  start_addr: 32'h0000_0000,
 									  end_addr:   32'h0000_FFFF
+									  },
+									// NEW: Port Index 1 -> Dedicated for NPU Config Registers
+									// Pick a unique memory range (e.g., 32'h0001_0000 to 32'h0001_FFFF)
+									'{
+									  idx:        32'd1, 
+									  start_addr: 32'h0001_0000,
+									  end_addr:   32'h0001_FFFF
 									  }
 									};
 
    // Configuration struct for the Xbar
    localparam		    axi_pkg::xbar_cfg_t XbarCfg = '{
 							    NoSlvPorts:         32'd2,
-							    NoMstPorts:         32'd1,
+							    NoMstPorts:         32'd2,
 							    MaxMstTrans:        32'd8,
 							    MaxSlvTrans:        32'd8,
 							    FallThrough:        1'b1,
@@ -74,7 +82,7 @@ module soc #(
 							    //AxiIdWidthMstPorts: 5,  // Output to Bridge (with prefix)
 							    AxiAddrWidth:       32,
 							    AxiDataWidth:       64,
-							    NoAddrRules:        32'd1,
+							    NoAddrRules:        32'd2,
 							    UniqueIds:          1'b0, // Required for XBAR to add prefixes
 							    PipelineStages:     0
 							    };
@@ -101,8 +109,8 @@ module soc #(
 			.test_i        ( 1'b0    ),
 			.slv_ports_req_i  ( {slv_reqs[1],  slv_reqs[0]}  ), 
 			.slv_ports_resp_o ( {slv_resps[1], slv_resps[0]} ),
-			.mst_ports_req_o  ( {mst_reqs[0]} ), // Even if only one master port
-			.mst_ports_resp_i ( {mst_resps[0]} ),
+			.mst_ports_req_o       ( {mst_reqs[1],  mst_reqs[0]}  ), 
+			.mst_ports_resp_i      ( {mst_resps[1], mst_resps[0]} ),
 			.addr_map_i       ( AddrTable ),
 			.en_default_mst_port_i ( 1'b0 ),
 			.default_mst_port_i    ( '0 )
@@ -126,15 +134,26 @@ module soc #(
 			     .busy_o    (             )
 			     );
 
-   
    npu_wrapper #(
-		 .NumMasters ( 1 ), // Only one master for now (the rd_dma)
-		 .axi_req_t ( slv_req_t        ), 
-		 .axi_resp_t( slv_resp_t       )
+		 .NumMasters ( 1 ),          // Only one master for now (the rd_dma)
+		 .axi_req_t  ( slv_req_t  ), 
+		 .axi_resp_t ( slv_resp_t )
 		 ) i_npu_top (
-			      .clk_i      ( clk_i ),
-			      .rst_ni     ( rst_ni ),
-			      .mst_req_o  ( slv_reqs[1] ),  // Connect NPU Master to Xbar Slave Port 1
-			      .mst_resp_i  ( slv_resps[1] )
+			      .clk_i      ( clk_i      ),
+			      .rst_ni     ( rst_ni     ),
+
+			      // ====================================================================
+			      // 1. CONFIGURATION SLAVE PATH (Connected to Xbar Master Port 1)
+			      // ====================================================================
+			      // This delivers AXI commands from the CPU down to the register file
+			      .slv_req_i  ( mst_reqs[1]  ),
+			      .slv_resp_o ( mst_resps[1] ),
+
+			      // ====================================================================
+			      // 2. DATA MASTER PATH (Connected to Xbar Slave Port 1)
+			      // ====================================================================
+			      // This allows the NPU Read DMA to push fetch requests into system SRAM
+			      .mst_req_o  ( slv_reqs[1]  ),  
+			      .mst_resp_i ( slv_resps[1] )
 			      );
 endmodule

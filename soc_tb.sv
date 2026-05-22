@@ -45,24 +45,27 @@ module soc_tb;
       //////
       
       # 1000;
-      $display("[TB] Starting NPU rmda...");
-      // Trigger a read from NPU, source is SRAM
-      i_soc.i_npu_top.rdma_addr = 32'h0000_0010;
-      i_soc.i_npu_top.rdma_len = 20'd63; // set bytes to receive
-      i_soc.i_npu_top.rdma_valid_internal = 1'b1;
-      
-      //#100;
-      // wait dynamically until DMA signals it is ready tp accept the command
-      do begin
-         @(posedge clk);
-      end while (!i_soc.i_npu_top.i_axi_dma_rd.s_axis_read_desc_ready);
-      //@(posedge clk);
-      i_soc.i_npu_top.rdma_valid_internal = 1'b0;
+      $display("[TB] Starting NPU rdma via AXI Bus...");
 
-      // Note: Because valid is high for exactly the single clock cycle where ready was also high, the Forencich DMA will consume exactly one descriptor command. It won't see a lingering high signal on the next cycle
-      $display("[TB] End NPU rmda...");
+      // 1. Write the Source SRAM Base Address to REG_RDMA_ADDR (Offset 0x0)
+      // Base (32'h0001_0000) + 0x0 = 32'h0001_0000 | Data = 32'h0000_0010
+      i_soc.i_cpu_bfm.axi_write(32'h0001_0000, 64'h0000_0000_0000_0010);
 
-      
+      // 2. Write the transfer length (63 bytes) to REG_RDMA_LEN (Offset 0x4)
+      // Base (32'h0001_0000) + 0x4 = 32'h0001_0004 | Data = 20'd63 (32'h0000_003F)
+      i_soc.i_cpu_bfm.axi_write(32'h0001_0004, 64'h0000_0000_0000_003F);
+
+      // 3. Kick off the DMA by writing 1 to the valid field in REG_RDMA_CTRL (Offset 0x8)
+      // Base (32'h0001_0000) + 0x8 = 32'h0001_0008 | Data = Bit [0] = 1'b1
+      //
+      // NOTE: Because this field is defined as 'singlepulse' in your RDL, the 
+      // hardware internal register logic handles the 1-cycle handshake automatically.
+      // It pulses high for exactly 1 cycle when the AXI write transaction completes, 
+      // satisfying the Forencich DMA engine command ingestion perfectly.
+      i_soc.i_cpu_bfm.axi_write(32'h0001_0008, 64'h0000_0000_0000_0001);
+
+      $display("[TB] End NPU rdma configuration.");
+
       #5000;
       $display("Simulation limit reached. Ending...");
       $finish;
