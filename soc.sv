@@ -51,11 +51,12 @@ module soc #(
    assign slv_resps[1]     = xbar_slv_resps[1];
 
    // Explicit Master Port Assignments (Index-to-Index Alignment)
-   assign mst_reqs[1]      = xbar_mst_reqs[0];  // XBAR Master Port 0 to SRAM
-   assign mst_reqs[0]      = xbar_mst_reqs[1];  // XBAR Master Port 1 to NPU Config
-   
-   assign xbar_mst_resps[1] = mst_resps[0];
-   assign xbar_mst_resps[0] = mst_resps[1];
+   assign mst_reqs[0]      = xbar_mst_reqs[0];  // XBAR Master Port 0 to SRAM
+   assign mst_reqs[1]      = xbar_mst_reqs[1];  // XBAR Master Port 1 to NPU Config
+
+   // NOTE !!!! temporary s
+   assign xbar_mst_resps[0] = mst_resps[0];
+   assign xbar_mst_resps[1] = mst_resps[1];
 
    // =========================================================================
    // 3. ISOLATION NETS FOR SMOKE-TESTING BACKDOOR OVERRIDES
@@ -114,7 +115,7 @@ module soc #(
 							    AxiAddrWidth:       32,
 							    AxiDataWidth:       64,
 							    NoAddrRules:        32'd2,
-							    UniqueIds:          1'b0, 
+							    UniqueIds:          1'b1, 
 							    PipelineStages:     0
 							    };
 

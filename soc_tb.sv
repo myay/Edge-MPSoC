@@ -67,12 +67,13 @@ module soc_tb;
       // $display("[TB] Bypassing AXI to manually force NPU registers...");
 
       // // Manually force the internal register logic inside the wrapper
-      // i_soc.i_npu_top.rdma_addr = 32'h0000_0010;
-      // i_soc.i_npu_top.rdma_len  = 20'd63;
-      // i_soc.i_npu_top.rdma_valid = 1'b1; 
-      // do begin
-      //    @(posedge clk);
-      // end while (!i_soc.i_npu_top.i_axi_dma_rd.s_axis_read_desc_ready);
+      i_soc.i_npu_top.rdma_addr = 32'h0000_0010;
+      i_soc.i_npu_top.rdma_len  = 20'd63;
+      $display("[TB] Forcing valid 1 (TODO reg needs fix)...");
+      i_soc.i_npu_top.rdma_valid = 1'b1; 
+       do begin
+          @(posedge clk);
+       end while (!i_soc.i_npu_top.i_axi_dma_rd.s_axis_read_desc_ready);
 
       // $display("[TB] Force complete. Checking for DMA startup...");
       // /// *** temporary
