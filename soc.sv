@@ -1,8 +1,16 @@
 // =========================================================================
 // Module: soc.sv
-// Description: Cleaned System-on-Chip top-level interconnect matrix.
-//              Incorporates strict structural isolation to expose bypass bugs
-//              and explicit array index tracking to eliminate concatenation traps.
+// Description:
+//   Version with FULLY REGISTERED XBAR INPUT STRUCTS.
+//
+//   Goal:
+//   Break all combinational timing/feedthrough paths between the BFM and
+//   the AXI crossbar.
+//
+//   Important:
+//   - Entire slv_req_t structs are registered before entering axi_xbar.
+//   - Handshake responses are still directly connected back.
+//   - This is intentionally "heavy-handed" for debug stabilization.
 // =========================================================================
 
 `include "axi_typedefs.svh"
@@ -11,187 +19,226 @@ module soc #(
 	     parameter int unsigned SocAddrWidth = 32,
 	     parameter int unsigned SocDataWidth = 64,
 	     parameter int unsigned SocIdWidth = 4
-	     ) (
-		input logic clk_i,
-		input logic rst_ni
-		);
+	     )(
+	       input logic clk_i,
+	       input logic rst_ni
+	       );
 
    // =========================================================================
    // 1. INTERCONNECT STRUCTURE ARRAYS
    // =========================================================================
-   // Slave Ports: Connected to Master Initiators (CPU @ Index 0, NPU @ Index 1)
-   slv_req_t  slv_reqs  [1:0]; 
-   slv_resp_t slv_resps [1:0];
 
-   // Master Ports: Connected to Target Slaves (RAM @ Index 0, NPU Config @ Index 1)
-   mst_req_t  mst_reqs  [1:0]; 
-   mst_resp_t mst_resps [1:0];
+   slv_req_t [1:0] slv_reqs;
+   slv_resp_t [1:0] slv_resps;
 
-   // Dedicated BFM local handshake wires
-   slv_req_t  bfm_req;  
+   mst_req_t [1:0] mst_reqs;
+   mst_resp_t [1:0] mst_resps;
+
+   // =========================================================================
+   // 2. CPU BFM WIRES
+   // =========================================================================
+
+   slv_req_t  bfm_req;
    slv_resp_t bfm_resp;
 
-   // Establish Slave Port 0 explicit coupling
-   assign slv_reqs[0] = bfm_req; 
+   assign slv_reqs[0] = bfm_req;
    assign bfm_resp    = slv_resps[0];
 
    // =========================================================================
-   // 2. INTERMEDIATE XBAR ARRAYS & EXPLICIT INDEX MAPPING
+   // 3. REGISTERED XBAR INPUT STAGE
    // =========================================================================
-   slv_req_t  [1:0] xbar_slv_reqs;
+
+   // RAW inputs to register stage
+   slv_req_t [1:0] xbar_slv_reqs_d;
+
+   // REGISTERED outputs into xbar
+   slv_req_t [1:0] xbar_slv_reqs_q;
+
+   // Responses from xbar
    slv_resp_t [1:0] xbar_slv_resps;
-   mst_req_t  [1:0] xbar_mst_reqs;
+
+   // Master side
+   mst_req_t [1:0] xbar_mst_reqs;
    mst_resp_t [1:0] xbar_mst_resps;
 
-   // Explicit Slave Port Assignments (Index-to-Index Alignment)
-   assign xbar_slv_reqs[0] = slv_reqs[0]; // CPU Master to XBAR Slave Port 0
-   assign xbar_slv_reqs[1] = slv_reqs[1]; // NPU Master to XBAR Slave Port 1
-   
-   assign slv_resps[0]     = xbar_slv_resps[0];
-   assign slv_resps[1]     = xbar_slv_resps[1];
+   // -------------------------------------------------------------------------
+   // RAW CONNECTIONS
+   // -------------------------------------------------------------------------
 
-   // Explicit Master Port Assignments (Index-to-Index Alignment)
-   assign mst_reqs[0]      = xbar_mst_reqs[0];  // XBAR Master Port 0 to SRAM
-   assign mst_reqs[1]      = xbar_mst_reqs[1];  // XBAR Master Port 1 to NPU Config
+   assign xbar_slv_reqs_d[0] = slv_reqs[0];
+   assign xbar_slv_reqs_d[1] = slv_reqs[1];
 
-   // NOTE !!!! temporary s
+   assign slv_resps[0] = xbar_slv_resps[0];
+   assign slv_resps[1] = xbar_slv_resps[1];
+
+   // -------------------------------------------------------------------------
+   // FULL STRUCT REGISTRATION
+   // -------------------------------------------------------------------------
+   // TODO: use axi_cut, axi_fifo, axi_multicut for better slicing
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+         xbar_slv_reqs_q[0] <= '0;
+         xbar_slv_reqs_q[1] <= '0;
+      end else begin
+         xbar_slv_reqs_q[0] <= xbar_slv_reqs_d[0];
+         xbar_slv_reqs_q[1] <= xbar_slv_reqs_d[1];
+      end
+   end
+
+   // =========================================================================
+   // 4. MASTER PORT CONNECTIONS
+   // =========================================================================
+
+   assign mst_reqs[0] = xbar_mst_reqs[0];
+   assign mst_reqs[1] = xbar_mst_reqs[1];
+
    assign xbar_mst_resps[0] = mst_resps[0];
    assign xbar_mst_resps[1] = mst_resps[1];
 
    // =========================================================================
-   // 3. ISOLATION NETS FOR SMOKE-TESTING BACKDOOR OVERRIDES
+   // 5. ISOLATED TARGET WIRES
    // =========================================================================
+
    mst_req_t  ram_isolated_req;
    mst_resp_t ram_isolated_resp;
 
    mst_req_t  npu_config_isolated_req;
    mst_resp_t npu_config_isolated_resp;
 
-   // Map crossbar core master array lanes to isolated point-to-point wires
-   assign ram_isolated_req        = mst_reqs[0];
-   assign mst_resps[0]            = ram_isolated_resp;
+   assign ram_isolated_req = mst_reqs[0];
+   assign mst_resps[0]     = ram_isolated_resp;
 
    assign npu_config_isolated_req = mst_reqs[1];
    assign mst_resps[1]            = npu_config_isolated_resp;
 
    // =========================================================================
-   // 4. EXPLICIT ADDRESS MAP GENERATION 
+   // 6. ADDRESS MAP
    // =========================================================================
-   // We keep this as an unpacked array to maintain your clean assignment structure.
-   axi_pkg::xbar_rule_32_t [1:0] xbar_addr_map;
 
-   // Slot [0]: System SRAM Range
-   assign xbar_addr_map[0].idx        = 32'd0;
-   assign xbar_addr_map[0].start_addr = 32'h0000_0000;
-   assign xbar_addr_map[0].end_addr   = 32'h0000_FFFF;
+   typedef axi_pkg::xbar_rule_32_t my_xbar_rule_t;
 
-   // Slot [1]: NPU Registers Range
-   assign xbar_addr_map[1].idx        = 32'd1;
-   assign xbar_addr_map[1].start_addr = 32'h0001_0000;
-   assign xbar_addr_map[1].end_addr   = 32'h0001_FFFF;
+   localparam my_xbar_rule_t [1:0] xbar_addr_map = '{
+						     '{
+						       idx:        32'd1,
+						       start_addr: 32'h00010000,
+						       end_addr:   32'h0001FFFF
+						       },
+						     '{
+						       idx:        32'd0,
+						       start_addr: 32'h00000000,
+						       end_addr:   32'h0000FFFF
+						       }
+						     };
 
    // =========================================================================
-   // 5. INITIATOR MODULE INSTANTIATION (CPU BFM)
+   // 7. CPU BFM
    // =========================================================================
+
    cpu_bfm i_cpu_bfm (
-		      .clk_i          (clk_i),
-		      .rst_ni         (rst_ni),
-		      .ext_mst_req_o  (bfm_req), 
-		      .ext_mst_resp_i (bfm_resp) 
+		      .clk_i          ( clk_i   ),
+		      .rst_ni         ( rst_ni  ),
+		      .ext_mst_req_o  ( bfm_req ),
+		      .ext_mst_resp_i ( bfm_resp )
 		      );
 
    // =========================================================================
-   // 6. AXI INTERCONNECT SYSTEM (AXI_XBAR)
+   // 8. XBAR CONFIG
    // =========================================================================
-   localparam		    axi_pkg::xbar_cfg_t XbarCfg = '{
-							    NoSlvPorts:         32'd2,
-							    NoMstPorts:         32'd2,
-							    MaxMstTrans:        32'd8,
-							    MaxSlvTrans:        32'd8,
-							    FallThrough:        1'b1,
-							    LatencyMode:        axi_pkg::NO_LATENCY,
-							    AxiIdWidthSlvPorts: 4,  
-							    AxiIdUsedSlvPorts:  4,
-							    AxiAddrWidth:       32,
-							    AxiDataWidth:       64,
-							    NoAddrRules:        32'd2,
-							    UniqueIds:          1'b1, 
-							    PipelineStages:     0
-							    };
+
+   localparam axi_pkg::xbar_cfg_t XbarCfg = '{
+					      NoSlvPorts:         32'd2,
+					      NoMstPorts:         32'd2,
+					      MaxMstTrans:        32'd8,
+					      MaxSlvTrans:        32'd8,
+					      FallThrough:        1'b0,
+					      LatencyMode:        axi_pkg::NO_LATENCY,
+					      AxiIdWidthSlvPorts: 4,
+					      AxiIdUsedSlvPorts:  4,
+					      AxiAddrWidth:       32,
+					      AxiDataWidth:       64,
+					      NoAddrRules:        32'd2,
+					      UniqueIds:          1'b0,
+					      PipelineStages:     0
+					      };
+
+   localparam bit [1:0][1:0] XbarConnectivity = '{
+						  '{1'b1, 1'b1},
+						  '{1'b1, 1'b1}
+						  };
+
+   // =========================================================================
+   // 9. AXI XBAR
+   // =========================================================================
 
    axi_xbar #(
-	      .Cfg           ( XbarCfg ),
-	      .slv_req_t     ( slv_req_t ),
-	      .slv_resp_t    ( slv_resp_t ),
-	      .mst_req_t     ( mst_req_t ),
-	      .mst_resp_t    ( mst_resp_t ),
-	      .slv_aw_chan_t ( slv_aw_chan_t ),
-	      .mst_aw_chan_t ( mst_aw_chan_t ),
-	      .w_chan_t      ( slv_w_chan_t  ),
-	      .slv_b_chan_t  ( slv_b_chan_t  ),
-	      .mst_b_chan_t  ( mst_b_chan_t  ),
-	      .slv_ar_chan_t ( slv_ar_chan_t ),
-	      .mst_ar_chan_t ( mst_ar_chan_t ),
-	      .slv_r_chan_t  ( slv_r_chan_t  ),
-	      .mst_r_chan_t  ( mst_r_chan_t  ),
-	      .rule_t        ( axi_pkg::xbar_rule_32_t ) 
+	      .Cfg              ( XbarCfg         ),
+	      .slv_req_t        ( slv_req_t       ),
+	      .slv_resp_t       ( slv_resp_t      ),
+	      .mst_req_t        ( mst_req_t       ),
+	      .mst_resp_t       ( mst_resp_t      ),
+	      .slv_aw_chan_t    ( slv_aw_chan_t   ),
+	      .mst_aw_chan_t    ( mst_aw_chan_t   ),
+	      .w_chan_t         ( slv_w_chan_t    ),
+	      .slv_b_chan_t     ( slv_b_chan_t    ),
+	      .mst_b_chan_t     ( mst_b_chan_t    ),
+	      .slv_ar_chan_t    ( slv_ar_chan_t   ),
+	      .mst_ar_chan_t    ( mst_ar_chan_t   ),
+	      .slv_r_chan_t     ( slv_r_chan_t    ),
+	      .mst_r_chan_t     ( mst_r_chan_t    ),
+	      .rule_t           ( my_xbar_rule_t  ),
+	      .Connectivity     ( XbarConnectivity )
 	      ) i_xbar (
-			.clk_i                 ( clk_i           ), 
-			.rst_ni                ( rst_ni          ), 
-			.test_i                ( 1'b0            ),
-			
-			.slv_ports_req_i       ( xbar_slv_reqs   ), 
-			.slv_ports_resp_o      ( xbar_slv_resps  ),
-			
-			.mst_ports_req_o       ( xbar_mst_reqs   ), 
-			.mst_ports_resp_i      ( xbar_mst_resps  ),
-			
-			.addr_map_i            (xbar_addr_map), 
-			
-			.en_default_mst_port_i ( 2'b00           ),
-			.default_mst_port_i    ( 2'b00           )
+			.clk_i                 ( clk_i             ),
+			.rst_ni                ( rst_ni            ),
+			.test_i                ( 1'b0              ),
+
+			.slv_ports_req_i       ( xbar_slv_reqs_q   ),
+			.slv_ports_resp_o      ( xbar_slv_resps    ),
+
+			.mst_ports_req_o       ( xbar_mst_reqs     ),
+			.mst_ports_resp_i      ( xbar_mst_resps    ),
+
+			.addr_map_i            ( xbar_addr_map     ),
+
+			.en_default_mst_port_i ( 2'b00             ),
+			.default_mst_port_i    ( 2'b00             )
 			);
 
    // =========================================================================
-   // 7. TARGET SYSTEM MODULES (SRAM & CO-PROCESSOR CORES)
+   // 10. TARGETS
    // =========================================================================
-   
-   // Target 0: System Memory Module
+
    axi_ram_module #(
 		    .AddrWidth ( SocAddrWidth ),
 		    .DataWidth ( SocDataWidth ),
-		    .IdWidth   ( 5            ), 
+		    .IdWidth   ( 5            ),
 		    .MemDepth  ( 2048         ),
-		    .axi_req_t ( mst_req_t    ), 
-		    .axi_resp_t( mst_resp_t   )  
+		    .axi_req_t ( mst_req_t    ),
+		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_slave_0 (
-				     .clk_i     ( clk_i            ),
-				     .rst_ni    ( rst_ni           ),
-				     .axi_req_i ( ram_isolated_req ), 
-				     .axi_resp_o( ram_isolated_resp),
-				     .busy_o    (                  )
+				     .clk_i      ( clk_i             ),
+				     .rst_ni     ( rst_ni            ),
+				     .axi_req_i  ( ram_isolated_req  ),
+				     .axi_resp_o ( ram_isolated_resp ),
+				     .busy_o     (                   )
 				     );
 
-   // Target 1 / Initiator 1: Neural Processing Accelerator Co-Processor
    npu_wrapper #(
-		 .NumMasters     ( 1 ),          
-		 .axi_cfg_req_t  ( mst_req_t  ), 
-		 .axi_cfg_resp_t ( mst_resp_t ),
-		 .axi_data_req_t ( slv_req_t  ),
-		 .axi_data_resp_t( slv_resp_t )
+		 .NumMasters      ( 1          ),
+		 .axi_cfg_req_t   ( mst_req_t  ),
+		 .axi_cfg_resp_t  ( mst_resp_t ),
+		 .axi_data_req_t  ( slv_req_t  ),
+		 .axi_data_resp_t ( slv_resp_t )
 		 ) i_npu_top (
-			      .clk_i      ( clk_i   ),
-			      .rst_ni     ( rst_ni  ),
+			      .clk_i      ( clk_i                     ),
+			      .rst_ni     ( rst_ni                    ),
 
-			      // CONFIGURATION TARGET PATH
-			      .slv_req_i  ( npu_config_isolated_req  ),
-			      .slv_resp_o ( npu_config_isolated_resp ),
+			      .slv_req_i  ( npu_config_isolated_req   ),
+			      .slv_resp_o ( npu_config_isolated_resp  ),
 
-			      // ACCESS MASTER PATH
-			      .mst_req_o  ( slv_reqs[1]  ),  
-			      .mst_resp_i ( slv_resps[1] )
+			      .mst_req_o  ( slv_reqs[1]               ),
+			      .mst_resp_i ( slv_resps[1]              )
 			      );
-
    // =========================================================================
    // 8. DIAGNOSTIC BUS AUDIT LOGGING SYSTEM
    // =========================================================================
@@ -199,10 +246,66 @@ module soc #(
       $display("-------------------------------------------------------------------------------------------------------");
       $display("[    TIMESTAMP  ] [DIRECTION] PORT INSTANCE MODULE     | TRANSACTION DESCRIPTION & BUS DATA METADATA");
       $display("-------------------------------------------------------------------------------------------------------");
+      # 100;
+      print_xbar_routes(32'd2, xbar_addr_map);
+
+      // $display("ADDR=%h RULE0=[%h:%h] RULE1=[%h:%h]",
+      // 	       xbar_slv_reqs[0].aw.addr,
+      // 	       xbar_addr_map[0].start_addr,
+      // 	       xbar_addr_map[0].end_addr,
+      // 	       xbar_addr_map[1].start_addr,
+      // 	       xbar_addr_map[1].end_addr);
+      // $display("ADDR=%h RULE0=[%h:%h] RULE1=[%h:%h]",
+      //          xbar_slv_reqs[0].aw.addr,
+      //          RULE_RAM.start_addr,
+      //          RULE_RAM.end_addr,
+      //          RULE_NPU.start_addr,
+      //          RULE_NPU.end_addr);
    end
+
+   // Fix: Move the array dimension [2] to the right of the identifier name
+   function automatic void print_xbar_routes(
+					     input int unsigned	num_rules,
+					     input		my_xbar_rule_t [1:0] rules 
+					     );
+      // Explicitly declare loop variable outside the loop header for strict compilers
+      int unsigned						i; 
+      
+      $display("\n=== [XBAR RUNTIME ROUTING TABLE] ===");
+      for (i = 0; i < num_rules; i++) begin
+         $display(" Rule [%0d]:", i);
+         $display("   ├── Start Address : 0x%8h", rules[i].start_addr);
+         $display("   ├── End Address   : 0x%8h", rules[i].end_addr);
+         $display("   └── Target Port ID: %0d",   rules[i].idx);
+      end
+      $display("=====================================\n");
+   endfunction
 
    always @(posedge clk_i) begin
       if (rst_ni) begin
+
+	 // if (xbar_mst_reqs[0].aw_valid)
+	 //   $display("MST0 VALID addr=%h", xbar_mst_reqs[0].aw.addr);
+
+	 // if (xbar_mst_reqs[1].aw_valid)
+	 //   $display("MST1 VALID addr=%h", xbar_mst_reqs[1].aw.addr);
+	 
+	 // if (xbar_slv_reqs[0].aw_valid) begin
+	 //    $display("ADDR = 0x%08h", xbar_slv_reqs[0].aw.addr);
+
+	 //    if ((xbar_slv_reqs[0].aw.addr >= xbar_addr_map[0].start_addr) &&
+	 // 	(xbar_slv_reqs[0].aw.addr <  xbar_addr_map[0].end_addr))
+	 //      $display("MATCH RULE 0");
+
+	 //    if ((xbar_slv_reqs[0].aw.addr >= xbar_addr_map[1].start_addr) &&
+	 // 	(xbar_slv_reqs[0].aw.addr <  xbar_addr_map[1].end_addr))
+	 //      $display("MATCH RULE 1");
+	 // end
+	 
+	 // if (i_soc.xbar_slv_reqs[0].aw_valid) begin
+	 //    $display("[DEBUG] Crossbar received AWADDR: 0x%h", i_soc.xbar_slv_reqs[0].aw.addr);
+	 // end
+	 
          // Slave Port 0: CPU Input Interface
          if (slv_reqs[0].aw_valid && slv_resps[0].aw_ready) begin
             $display("[%14t] [XBAR_IN ] SLV_0_CPU  -> AW Fwd     | Addr: 0x%8h | ID: %1d | Ready: 1", 

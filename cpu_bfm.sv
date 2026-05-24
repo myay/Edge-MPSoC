@@ -39,7 +39,7 @@ module cpu_bfm (
       req.w_valid  = 1'b1;
       req.w.last   = 1'b1;
       req.w.strb   = '1;
-      req.aw.id = 4'h1;
+      req.aw.id = 4'h3;
 
       // FIX: Handle AW and W handshakes concurrently to allow staggered completion
       fork

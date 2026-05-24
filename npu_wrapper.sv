@@ -213,7 +213,7 @@ module npu_wrapper #(
    // --- Write Address Channel ---
    assign s_axil_awvalid     = axil_req.aw_valid;
    assign axil_resp.aw_ready = s_axil_awready;
-   assign s_axil_awaddr      = axil_req.aw.addr; 
+   assign s_axil_awaddr      = {28'h0, axil_req.aw.addr[3:0]};  // TODO correct bitslideing here
    assign s_axil_awprot      = axil_req.aw.prot;
 
    // --- Write Data Channel ---
@@ -230,7 +230,7 @@ module npu_wrapper #(
    // --- Read Address Channel ---
    assign s_axil_arvalid     = axil_req.ar_valid;
    assign axil_resp.ar_ready = s_axil_arready;
-   assign s_axil_araddr      = axil_req.ar.addr; 
+   assign s_axil_araddr      = {28'h0, axil_req.ar.addr[3:0]}; 
    assign s_axil_arprot      = axil_req.ar.prot;
 
    // --- Read Data Channel ---
