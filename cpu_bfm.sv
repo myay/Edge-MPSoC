@@ -30,43 +30,75 @@ module cpu_bfm (
 			    input logic [TB_ADDR_W-1:0]	addr,
 			    input logic [TB_DATA_W-1:0]	data
 			    );
+
       $display("[BFM @ %0t] >>> STARTING WRITE TASK", $time);
 
-      @(posedge clk_i);
-      req.aw.addr  = addr;
-      req.aw_valid = 1'b1;
-      req.w.data   = data;
-      req.w_valid  = 1'b1;
-      req.w.last   = 1'b1;
-      req.w.strb   = '1;
-      req.aw.id = 4'h3;
+      // ------------------------------------------------------------------
+      // IDLE PHASE
+      // ------------------------------------------------------------------
+      req.aw_valid <= 1'b0;
+      req.w_valid  <= 1'b0;
+      req.b_ready  <= 1'b1;
 
-      // FIX: Handle AW and W handshakes concurrently to allow staggered completion
-      fork
-         begin : aw_channel_phase
-            do begin
-               @(posedge clk_i);
-            end while (!ext_mst_resp_i.aw_ready);
-            req.aw_valid = 1'b0;
-         end
-         begin : w_channel_phase
-            do begin
-               @(posedge clk_i);
-            end while (!ext_mst_resp_i.w_ready);
-            req.w_valid  = 1'b0;
-         end
-      join
+      @(posedge clk_i);
+
+      // ------------------------------------------------------------------
+      // DRIVE PAYLOAD
+      // ------------------------------------------------------------------
+      req.aw.addr <= addr;
+      req.aw.id   <= 4'h3;
+
+      req.w.data  <= data;
+      req.w.strb  <= '1;
+      req.w.last  <= 1'b1;
+
+      @(posedge clk_i);
+
+      // ------------------------------------------------------------------
+      // ASSERT VALID
+      // ------------------------------------------------------------------
+      req.aw_valid <= 1'b1;
+      req.w_valid  <= 1'b1;
+
+      // ------------------------------------------------------------------
+      // WAIT FOR AW HANDSHAKE
+      // ------------------------------------------------------------------
+      while (!(req.aw_valid && ext_mst_resp_i.aw_ready)) begin
+	 @(posedge clk_i);
+      end
+
+      req.aw_valid <= 1'b0;
+
+      // ------------------------------------------------------------------
+      // WAIT FOR W HANDSHAKE
+      // ------------------------------------------------------------------
+      while (!(req.w_valid && ext_mst_resp_i.w_ready)) begin
+	 @(posedge clk_i);
+      end
+
+      req.w_valid <= 1'b0;
 
       $display("[BFM @ %0t] AW/W Handshakes Clear. Waiting for BVALID...", $time);
 
-      // Clean, clock-aligned check for the response phase
-      do begin
-         @(posedge clk_i);
-      end while (!ext_mst_resp_i.b_valid);
+      // ------------------------------------------------------------------
+      // WAIT FOR BRESP
+      // ------------------------------------------------------------------
+      while (!ext_mst_resp_i.b_valid) begin
+	 @(posedge clk_i);
+      end
+
+      @(posedge clk_i);
 
       $display("[BFM @ %0t] B_VALID SEEN. Finishing...", $time);
-      
+
+      // ------------------------------------------------------------------
+      // RETURN TO CLEAN IDLE
+      // ------------------------------------------------------------------
+      req.aw_valid <= 1'b0;
+      req.w_valid  <= 1'b0;
+
       @(posedge clk_i);
+
    endtask
 
    // --- AXI Read Task ---

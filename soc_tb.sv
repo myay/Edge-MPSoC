@@ -151,10 +151,13 @@ module soc_tb;
       $display("[MONITOR] ID Tracking Started: CPU=1, NPU=2");
       forever @(posedge clk) begin
 
-	 if (i_soc.slv_reqs[0].aw_valid) begin
-            $display("[TB_AUDIT @ %0t] AW_VALID SEEN! Bus raw address value is: 0x%h", 
-                     $time, i_soc.slv_reqs[0].aw.addr);
-         end
+	 if (i_soc.slv_reqs[0].aw_valid &&
+	     i_soc.slv_resps[0].aw_ready) begin
+
+	    $display("[TB_AUDIT @ %0t] AW HANDSHAKE! Addr=0x%h",
+		     $time,
+		     i_soc.slv_reqs[0].aw.addr);
+	 end
 	 
          // 1. Track NPU Requests
          if (i_soc.i_npu_top.mst_req_o.ar_valid && i_soc.i_npu_top.mst_resp_i.ar_ready) begin
