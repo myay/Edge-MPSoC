@@ -31,7 +31,6 @@ module axi_ram_module #(
    axi_pkg::atop_t           mem_atop;
 
    assign mem_gnt = 1'b1;
-
    // ---------------------------
    // AXI to Memory Bridge
    // ---------------------------

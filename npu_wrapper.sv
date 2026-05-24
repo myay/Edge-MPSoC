@@ -33,12 +33,9 @@ module npu_wrapper #(
 			);
 
    // --- Hardcode the Address Read ID to 2 ---
-   assign mst_req_o.ar.id = 4'h2;
-
+   //assign mst_req_o.ar.id = 4'h2;
+   assign npu_core_ready = 1'b1;
    // --- Debug/Simulation Monitors ---
-   logic			    rdma_valid_internal /* verilator public_flat */;
-   logic			    rdma_tready_internal;
-   assign rdma_tready_internal = rdma_valid_internal; 
    
    initial begin
       forever @(posedge clk_i) begin
@@ -269,5 +266,10 @@ module npu_wrapper #(
       
 					.hwif_out        ( regs_hwif_out   )
 					);
+
+   always @(posedge clk_i) begin
+      if (rdma_valid && rdma_desc_ready)
+	$display("[%0t] DMA DESC ACCEPTED", $time);
+   end
 
 endmodule

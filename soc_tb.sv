@@ -53,7 +53,7 @@ module soc_tb;
 
       // 2. Write the transfer length (63 bytes) to REG_RDMA_LEN (Offset 0x4)
       // Base (32'h0001_0000) + 0x4 = 32'h0001_0004 | Data = 20'd63 (32'h0000_003F)
-      i_soc.i_cpu_bfm.axi_write(32'h0001_0004, 64'h0000_0000_0000_003F);
+      i_soc.i_cpu_bfm.axi_write(32'h0001_0004, 64'h0000_0000_0000_0040);
 
       // 3. Kick off the DMA by writing 1 to the valid field in REG_RDMA_CTRL (Offset 0x8)
       // Base (32'h0001_0000) + 0x8 = 32'h0001_0008 | Data = Bit [0] = 1'b1
@@ -63,6 +63,7 @@ module soc_tb;
       // It pulses high for exactly 1 cycle when the AXI write transaction completes, 
       // satisfying the Forencich DMA engine command ingestion perfectly.
       i_soc.i_cpu_bfm.axi_write(32'h0001_0008, 64'h0000_0000_0000_0001);
+      //i_soc.i_cpu_bfm.axi_write(32'h0001_0008, 64'h0000_0000_0000_0000);
       /// ***temporary
       // $display("[TB] Bypassing AXI to manually force NPU registers...");
 
