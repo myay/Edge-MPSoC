@@ -74,4 +74,14 @@ module axi_ram_module #(
 			       .rdata_o  (mem_rdata)
 			       );
 
+
+   always @(posedge clk_i) begin
+      if (mem_req)
+	$display("[%0t] MEM_REQ we=%0d addr=%h",
+		 $time, mem_we, mem_addr);
+
+      if (mem_rvalid)
+	$display("[%0t] MEM_RVALID data=%h",
+		 $time, mem_rdata);
+   end
 endmodule

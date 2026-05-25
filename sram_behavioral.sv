@@ -2,49 +2,129 @@ module sram_behavioral #(
 			 parameter int unsigned	DataWidth = 64,
 			 parameter int unsigned	MemDepth = 1024,
 			 parameter int unsigned	AddrWidth = $clog2(MemDepth)
-			 ) (
-			    input logic			  clk_i,
-			    input logic			  rst_ni,
-			    input logic			  req_i,
-			    input logic			  we_i,
-			    input logic [AddrWidth-1:0]	  addr_i,
-			    input logic [DataWidth-1:0]	  wdata_i,
-			    input logic [DataWidth/8-1:0] be_i, // Byte enables
-			    output logic		  rvalid_o,
-			    output logic [DataWidth-1:0]  rdata_o
-			    );
-   
-   logic [DataWidth-1:0]				  mem [MemDepth];
+			 )(
+			   input logic			 clk_i,
+			   input logic			 rst_ni,
 
-   // initialize SRAM with data from text file
+			   input logic			 req_i,
+			   input logic			 we_i,
+			   input logic [AddrWidth-1:0]	 addr_i,
+			   input logic [DataWidth-1:0]	 wdata_i,
+			   input logic [DataWidth/8-1:0] be_i,
+
+			   output logic			 rvalid_o,
+			   output logic [DataWidth-1:0]	 rdata_o
+			   );
+
+   // =========================================================================
+   // MEMORY ARRAY
+   // =========================================================================
+
+   logic [DataWidth-1:0]				 mem [MemDepth];
+
+   // =========================================================================
+   // INIT
+   // =========================================================================
+
    initial begin
-      $readmemh("/home/mikail/digital-design/interconnect/axi/own_axi_interconnect/sram_init.mem", mem);
-      #1; // Wait 1ns for the load to settle
-      // $display("--- SRAM LOAD CHECK ---");
-      // foreach (mem[i]) begin
-      // 	 if (mem[i] != 0) begin
-      //       $display("Index [%0d] contains: %h", i, mem[i]);
-      // 	 end
-      // end
-      // $display("-----------------------");
+      $readmemh(
+		"/home/mikail/digital-design/interconnect/axi/own_axi_interconnect/sram_init.mem",
+		mem
+		);
    end
-   
+
+   // =========================================================================
+   // SRAM MODEL
+   // =========================================================================
+
    always_ff @(posedge clk_i or negedge rst_ni) begin
+
       if (!rst_ni) begin
          rvalid_o <= 1'b0;
          rdata_o  <= '0;
-      end else begin
+      end
+      else begin
+
+         // -------------------------------------------------------------
+         // Default: No valid response unless a request was processed
+         // -------------------------------------------------------------
+         rvalid_o <= 1'b0;
+
+         // -------------------------------------------------------------
+         // Accept NEW request every cycle
+         // -------------------------------------------------------------
          if (req_i) begin
+
+            // Assert valid on the very next cycle
+            rvalid_o <= 1'b1;
+
+            // ---------------------------------------------------------
+            // WRITE
+            // ---------------------------------------------------------
             if (we_i) begin
-               // Handle byte-masked writes if necessary
-               mem[addr_i] <= wdata_i;
-            end else begin
+               for (int i = 0; i < DataWidth/8; i++) begin
+                  if (be_i[i]) begin
+                     mem[addr_i][8*i +: 8] <= wdata_i[8*i +: 8];
+                  end
+               end
+            end
+            
+            // ---------------------------------------------------------
+            // READ
+            // ---------------------------------------------------------
+            else begin
                rdata_o <= mem[addr_i];
             end
-            rvalid_o <= 1'b1;
-         end else begin
-            rvalid_o <= 1'b0;
+
          end
       end
    end
+
+   // =========================================================================
+   // DEBUG
+   // =========================================================================
+   
+   // Pipeline registers solely to align debug print statements with 
+   // the response cycle (cycle N+1)
+   logic                   req_q;
+   logic		   we_q;
+   logic [AddrWidth-1:0]   addr_q;
+
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+         req_q  <= 1'b0;
+         we_q   <= 1'b0;
+         addr_q <= '0;
+      end else begin
+         req_q  <= req_i;
+         we_q   <= we_i;
+         addr_q <= addr_i;
+      end
+   end
+
+   always_ff @(posedge clk_i) begin
+      
+      // Print request on the cycle it arrives
+      if (req_i) begin
+         $display("[%0t] SRAM_REQ we=%0d addr=%h", 
+                  $time, 
+                  we_i, 
+                  addr_i);
+      end
+
+      // Print response on the cycle the data is ready
+      if (req_q) begin
+         if (we_q) begin
+            $display("[%0t] SRAM_WRITE_RESP", 
+                     $time);
+         end else begin
+            // Note: rdata_o evaluates to the newly clocked-out data
+            $display("[%0t] SRAM_READ_RESP addr=%h data=%h", 
+                     $time, 
+                     addr_q, 
+                     rdata_o);
+         end
+      end
+   end
+
 endmodule
