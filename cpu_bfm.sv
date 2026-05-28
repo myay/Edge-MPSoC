@@ -4,148 +4,240 @@
 module cpu_bfm (
 		input logic clk_i,
 		input logic rst_ni,
-		// Using the types defined in the included header
+
 		output	    slv_req_t ext_mst_req_o,
 		input	    slv_resp_t ext_mst_resp_i
 		);
 
-   // Internal register to drive the output
-   slv_req_t  req;  // Using the 4-bit ID type for the CPU Master
-   slv_resp_t resp;
-   assign ext_mst_req_o = req;
+   // =========================================================================
+   // INTERNAL REQUEST STRUCT
+   // =========================================================================
 
-   // Hardcode the Address Read ID to 1
-   //assign ext_mst_req_o[0].ar.id = 4'h1;
+   slv_req_t req;
 
-   // Initialization
-   initial begin
-      req = '0;
-      // Default ready signals for response channels
-      req.b_ready = 1'b1; 
-      req.r_ready = 1'b1;
-      //req.ar.id = 4'h1;
+   // =========================================================================
+   // REGISTERED AXI OUTPUTS
+   // IMPORTANT:
+   // Breaks combinational feedback through NO_LATENCY XBAR
+   // =========================================================================
+
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni)
+        ext_mst_req_o <= '0;
+      else
+        ext_mst_req_o <= req;
    end
+
+   // =========================================================================
+   // INITIALIZATION
+   // =========================================================================
+
+   initial begin
+
+      req = '0;
+
+      // Default idle
+      req.aw_valid = 1'b0;
+      req.w_valid  = 1'b0;
+      req.ar_valid = 1'b0;
+
+      // Always ready for responses
+      req.b_ready  = 1'b1;
+      req.r_ready  = 1'b1;
+   end
+
+   // =========================================================================
+   // AXI WRITE TASK
+   // =========================================================================
 
    task automatic axi_write(
 			    input logic [TB_ADDR_W-1:0]	addr,
 			    input logic [TB_DATA_W-1:0]	data
 			    );
 
-      $display("[BFM @ %0t] >>> STARTING WRITE TASK", $time);
+      logic						aw_done;
+      logic						w_done;
 
-      // ------------------------------------------------------------------
-      // IDLE PHASE
-      // ------------------------------------------------------------------
-      req.aw_valid <= 1'b0;
-      req.w_valid  <= 1'b0;
-      req.b_ready  <= 1'b1;
+      slv_aw_chan_t aw_temp;
+      slv_w_chan_t  w_temp;
 
-      @(posedge clk_i);
+      aw_done = 1'b0;
+      w_done  = 1'b0;
 
-      // ------------------------------------------------------------------
-      // DRIVE PAYLOAD
-      // ------------------------------------------------------------------
-      req.aw.addr <= addr;
-      req.aw.id   <= 4'h3;
+      aw_temp = '0;
+      w_temp  = '0;
 
-      req.w.data  <= data;
-      req.w.strb  <= '1;
-      req.w.last  <= 1'b1;
+      // ---------------------------------------------------------------------
+      // Prepare AW
+      // ---------------------------------------------------------------------
 
-      @(posedge clk_i);
+      aw_temp.addr  = addr;
+      aw_temp.id    = 4'h3;
+      aw_temp.len   = 8'h00;
+      aw_temp.size  = 3'b011;
+      aw_temp.burst = 2'b01;
 
-      // ------------------------------------------------------------------
-      // ASSERT VALID
-      // ------------------------------------------------------------------
+      // ---------------------------------------------------------------------
+      // Prepare W
+      // ---------------------------------------------------------------------
+
+      w_temp.data   = data;
+      w_temp.strb   = '1;
+      w_temp.last   = 1'b1;
+
+      $display("\n[%0t] [BFM] WRITE LAUNCH | Addr: 0x%h | Data: 0x%h_%08h",
+               $time, addr, data[63:32], data[31:0]);
+
+      // ---------------------------------------------------------------------
+      // Launch transaction
+      // ---------------------------------------------------------------------
+
+      @(negedge clk_i);
+
+      req.aw       <= aw_temp;
       req.aw_valid <= 1'b1;
+
+      req.w        <= w_temp;
       req.w_valid  <= 1'b1;
 
-      // ------------------------------------------------------------------
-      // WAIT FOR AW HANDSHAKE
-      // ------------------------------------------------------------------
-      while (!(req.aw_valid && ext_mst_resp_i.aw_ready)) begin
-	 @(posedge clk_i);
+      // ---------------------------------------------------------------------
+      // Wait for AW/W handshakes independently
+      // ---------------------------------------------------------------------
+
+      while (!aw_done || !w_done) begin
+
+         @(posedge clk_i);
+
+         // --------------------------------------------------------------
+         // AW handshake
+         // --------------------------------------------------------------
+
+         if (!aw_done &&
+             ext_mst_req_o.aw_valid &&
+             ext_mst_resp_i.aw_ready) begin
+
+            aw_done = 1'b1;
+
+            $display("[%0t] [BFM] AW Channel Handshake Complete",
+                     $time);
+
+            @(negedge clk_i);
+            req.aw_valid <= 1'b0;
+         end
+
+         // --------------------------------------------------------------
+         // W handshake
+         // --------------------------------------------------------------
+
+         if (!w_done &&
+             ext_mst_req_o.w_valid &&
+             ext_mst_resp_i.w_ready) begin
+
+            w_done = 1'b1;
+
+            $display("[%0t] [BFM] W Channel Handshake Complete",
+                     $time);
+
+            @(negedge clk_i);
+            req.w_valid <= 1'b0;
+         end
       end
 
-      req.aw_valid <= 1'b0;
+      // ---------------------------------------------------------------------
+      // Wait for B response
+      // ---------------------------------------------------------------------
 
-      // ------------------------------------------------------------------
-      // WAIT FOR W HANDSHAKE
-      // ------------------------------------------------------------------
-      while (!(req.w_valid && ext_mst_resp_i.w_ready)) begin
-	 @(posedge clk_i);
-      end
+      $display("[%0t] [BFM] Waiting for B_VALID...", $time);
 
-      req.w_valid <= 1'b0;
+      while (!ext_mst_resp_i.b_valid)
+        @(posedge clk_i);
 
-      $display("[BFM @ %0t] AW/W Handshakes Clear. Waiting for BVALID...", $time);
-
-      // ------------------------------------------------------------------
-      // WAIT FOR BRESP
-      // ------------------------------------------------------------------
-      while (!ext_mst_resp_i.b_valid) begin
-	 @(posedge clk_i);
-      end
-
-      @(posedge clk_i);
-
-      $display("[BFM @ %0t] B_VALID SEEN. Finishing...", $time);
-
-      // ------------------------------------------------------------------
-      // RETURN TO CLEAN IDLE
-      // ------------------------------------------------------------------
-      req.aw_valid <= 1'b0;
-      req.w_valid  <= 1'b0;
-
-      @(posedge clk_i);
+      $display("[%0t] [BFM] WRITE COMPLETE | B_RESP: %b",
+               $time,
+               ext_mst_resp_i.b.resp);
 
    endtask
 
-   // --- AXI Read Task ---
+   // =========================================================================
+   // AXI READ TASK
+   // =========================================================================
+
    task automatic axi_read(
 			   input logic [TB_ADDR_W-1:0]	addr,
 			   output logic [TB_DATA_W-1:0]	data
 			   );
-      $display("[BFM @ %0t] >>> Starting Read: Addr=%h", $time, addr);
-      //req.ar.id    = 4'hA; // Give it a specific ID (like 'A' for Alpha)
-      @(posedge clk_i);
-      req.ar.addr  = addr;
-      req.ar_valid = 1'b1;
 
-      wait (ext_mst_resp_i.ar_ready);
-      $display("[BFM @ %0t] ARREADY received", $time);
+      @(negedge clk_i);
 
-      @(posedge clk_i);
-      req.ar_valid = 1'b0;
+      req.ar.addr  <= addr;
+      req.ar.id    <= 4'h1;
+      req.ar.len   <= 8'h00;
+      req.ar.size  <= 3'b011;
+      req.ar.burst <= 2'b01;
 
-      wait (ext_mst_resp_i.r_valid);
+      req.ar_valid <= 1'b1;
+
+      // ---------------------------------------------------------------------
+      // Wait for AR handshake
+      // ---------------------------------------------------------------------
+
+      while (!(ext_mst_req_o.ar_valid &&
+               ext_mst_resp_i.ar_ready))
+        @(posedge clk_i);
+
+      $display("[%0t] [BFM] AR Channel Handshake Complete",
+               $time);
+
+      @(negedge clk_i);
+      req.ar_valid <= 1'b0;
+
+      // ---------------------------------------------------------------------
+      // Wait for read data
+      // ---------------------------------------------------------------------
+
+      while (!ext_mst_resp_i.r_valid)
+        @(posedge clk_i);
+
       data = ext_mst_resp_i.r.data;
-      $display("[BFM @ %0t] <<< Read Complete! Data=%h", $time, data);
 
-      @(posedge clk_i);
-   endtask // axi_read
+      $display("[%0t] [BFM] READ COMPLETE | DATA=%h",
+               $time,
+               data);
 
-   // --- Read All Task (Optimized for 64-bit) ---
+   endtask
+
+   // =========================================================================
+   // READ ALL
+   // =========================================================================
+
    task automatic read_all(
-			   input logic [31:0] start_addr, // Addr width 32
-			   input int	      num_words   // How many 64-bit words to read
+			   input logic [31:0] start_addr,
+			   input int	      num_words
 			   );
-      logic [63:0]			      temp_data;          // Data width 64
+
+      logic [63:0]			      temp_data;
       logic [31:0]			      current_addr;
 
-      $display("[BFM @ %0t] === STARTING 64-BIT SRAM DUMP ===", $time);
+      $display("[BFM @ %0t] === STARTING 64-BIT SRAM DUMP ===",
+               $time);
 
       for (int i = 0; i < num_words; i++) begin
-         // Increment by 8 bytes per 64-bit word
-         current_addr = start_addr + (i * 8); 
-         
+
+         current_addr = start_addr + (i * 8);
+
          axi_read(current_addr, temp_data);
-         
-         $display("[BFM @ %0t] Word %0d | Addr: 0x%h | Data: 0x%h_%h", 
-                  $time, i, current_addr, temp_data[63:32], temp_data[31:0]);
+
+         $display("\n [BFM @ %0t] READ | Word %0d | Addr: 0x%h | Data: 0x%h_%08h",
+                  $time,
+                  i,
+                  current_addr,
+                  temp_data[63:32],
+                  temp_data[31:0]);
       end
 
-      $display("[BFM @ %0t] === 64-BIT SRAM DUMP COMPLETE ===", $time);
+      $display("[BFM @ %0t] === 64-BIT SRAM DUMP COMPLETE ===",
+               $time);
+
    endtask
 
 endmodule

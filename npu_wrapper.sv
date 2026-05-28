@@ -9,6 +9,7 @@
 //   - Prevents lost descriptors due to axi_dma_rd prefetch timing
 //   - Handles backpressure correctly
 //   - AXIS always ready
+//   - Zero-poisoning resolved via structural packing block
 // ============================================================================
 
 `include "axi_typedefs.svh"
@@ -130,13 +131,6 @@ module npu_wrapper #(
       end
       else begin
 
-         // ---------------------------------------------------------
-         // ACCEPT NEW SW PULSE
-         // ---------------------------------------------------------
-
-         // Only accept if buffer empty
-         // Prevent overwriting pending descriptor
-
          if (rdma_valid && !desc_valid_q) begin
 
             desc_valid_q <= 1'b1;
@@ -149,10 +143,6 @@ module npu_wrapper #(
                      rdma_len);
          end
 
-         // ---------------------------------------------------------
-         // CLEAR ONLY ON REAL HANDSHAKE
-         // ---------------------------------------------------------
-
          if (desc_valid_q && rdma_desc_ready) begin
 
             desc_valid_q <= 1'b0;
@@ -161,7 +151,7 @@ module npu_wrapper #(
                      $time);
          end
       end
-   end // always_ff @ (posedge clk_i or negedge rst_ni)
+   end 
 
    // =========================================================================
    // DMA STREAM SIGNALS
@@ -177,20 +167,28 @@ module npu_wrapper #(
    logic [3:0]	debug_rdma_status_error;
    logic	debug_rdma_status_valid;
 
-   // DMA fix tlast
    logic	npu_core_last_raw;
 
    assign npu_core_last =
 			 npu_core_valid &&
 			 npu_core_last_raw;
 
+   assign npu_core_ready = 1'b1;
+
    // =========================================================================
-   // IMPORTANT:
-   // Keep READY high permanently.
-   // axi_dma_rd internally pipelines/prefetches reads.
+   // INTERMEDIATE DMA ROUTING WIRES
    // =========================================================================
 
-   assign npu_core_ready = 1'b1;
+   logic [3:0]	dma_arid;
+   logic [31:0]	dma_araddr;
+   logic [7:0]	dma_arlen;
+   logic [2:0]	dma_arsize;
+   logic [1:0]	dma_arburst;
+   logic	dma_arlock;
+   logic [3:0]	dma_arcache;
+   logic [2:0]	dma_arprot;
+   logic	dma_arvalid;
+   logic	dma_rready;
 
    // =========================================================================
    // AXI DMA READER
@@ -210,10 +208,6 @@ module npu_wrapper #(
                                 .clk                           ( clk_i   ),
                                 .rst                           ( !rst_ni ),
 
-                                // ---------------------------------------------------------------------
-                                // Descriptor Input
-                                // ---------------------------------------------------------------------
-
                                 .s_axis_read_desc_addr         ( desc_addr_q     ),
                                 .s_axis_read_desc_len          ( desc_len_q      ),
                                 .s_axis_read_desc_tag          ( 8'h02           ),
@@ -223,17 +217,9 @@ module npu_wrapper #(
                                 .s_axis_read_desc_valid        ( desc_valid_q    ),
                                 .s_axis_read_desc_ready        ( rdma_desc_ready ),
 
-                                // ---------------------------------------------------------------------
-                                // Status
-                                // ---------------------------------------------------------------------
-
                                 .m_axis_read_desc_status_tag   ( debug_rdma_status_tag   ),
                                 .m_axis_read_desc_status_error ( debug_rdma_status_error ),
                                 .m_axis_read_desc_status_valid ( debug_rdma_status_valid ),
-
-                                // ---------------------------------------------------------------------
-                                // AXIS OUTPUT
-                                // ---------------------------------------------------------------------
 
                                 .m_axis_read_data_tdata        ( npu_core_data  ),
                                 .m_axis_read_data_tvalid       ( npu_core_valid ),
@@ -244,42 +230,46 @@ module npu_wrapper #(
                                 .m_axis_read_data_tdest        ( ),
                                 .m_axis_read_data_tuser        ( ),
 
-                                // ---------------------------------------------------------------------
-                                // AXI READ ADDRESS CHANNEL
-                                // ---------------------------------------------------------------------
-
-                                .m_axi_arid                    ( mst_req_o.ar.id     ),
-                                .m_axi_araddr                  ( mst_req_o.ar.addr   ),
-                                .m_axi_arlen                   ( mst_req_o.ar.len    ),
-                                .m_axi_arsize                  ( mst_req_o.ar.size   ),
-                                .m_axi_arburst                 ( mst_req_o.ar.burst  ),
-                                .m_axi_arlock                  ( mst_req_o.ar.lock   ),
-                                .m_axi_arcache                 ( mst_req_o.ar.cache  ),
-                                .m_axi_arprot                  ( mst_req_o.ar.prot   ),
-                                .m_axi_arvalid                 ( mst_req_o.ar_valid  ),
+                                .m_axi_arid                    ( dma_arid      ),
+                                .m_axi_araddr                  ( dma_araddr    ),
+                                .m_axi_arlen                   ( dma_arlen     ),
+                                .m_axi_arsize                  ( dma_arsize    ),
+                                .m_axi_arburst                 ( dma_arburst   ),
+                                .m_axi_arlock                  ( dma_arlock    ),
+                                .m_axi_arcache                 ( dma_arcache   ),
+                                .m_axi_arprot                  ( dma_arprot    ),
+                                .m_axi_arvalid                 ( dma_arvalid   ),
                                 .m_axi_arready                 ( mst_resp_i.ar_ready ),
-
-                                // ---------------------------------------------------------------------
-                                // AXI READ DATA CHANNEL
-                                // ---------------------------------------------------------------------
 
                                 .m_axi_rid                     ( mst_resp_i.r.id     ),
                                 .m_axi_rdata                   ( mst_resp_i.r.data   ),
                                 .m_axi_rresp                   ( mst_resp_i.r.resp   ),
                                 .m_axi_rlast                   ( mst_resp_i.r.last   ),
                                 .m_axi_rvalid                  ( mst_resp_i.r_valid  ),
-                                .m_axi_rready                  ( mst_req_o.r_ready   ),
+                                .m_axi_rready                  ( dma_rready    ),
 
                                 .enable                        ( 1'b1 )
                                 );
 
    // =========================================================================
-   // STRUCTURAL TIEOFFS
+   // AXI MASTER PORT PACKING & STRUCTURAL TIEOFFS
    // =========================================================================
 
-   assign mst_req_o.aw_valid = 1'b0;
-   assign mst_req_o.w_valid  = 1'b0;
-   assign mst_req_o.b_ready  = 1'b1;
+   always_comb begin
+      mst_req_o = '0;
+
+      mst_req_o.ar.id    = dma_arid;
+      mst_req_o.ar.addr  = dma_araddr;
+      mst_req_o.ar.len   = dma_arlen;
+      mst_req_o.ar.size  = dma_arsize;
+      mst_req_o.ar.burst = dma_arburst;
+      mst_req_o.ar.lock  = dma_arlock;
+      mst_req_o.ar.cache = dma_arcache;
+      mst_req_o.ar.prot  = dma_arprot;
+      mst_req_o.ar_valid = dma_arvalid;
+
+      mst_req_o.r_ready  = dma_rready;
+   end
 
    // =========================================================================
    // AXI-LITE STRUCTS
@@ -386,8 +376,8 @@ module npu_wrapper #(
    // =========================================================================
    // DEBUG PRINTS
    // =========================================================================
-   integer	ar_count;
-   integer	r_count;
+   integer  ar_count;
+   integer  r_count;
    always @(posedge clk_i) begin
 
       if (rdma_valid)

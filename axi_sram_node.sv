@@ -3,7 +3,7 @@
 module axi_ram_module #(
 			parameter int unsigned AddrWidth = 32,
 			parameter int unsigned DataWidth = 64,
-			parameter int unsigned IdWidth = 4,
+			parameter int unsigned IdWidth = 8,
 			parameter int unsigned MemDepth = 1024,
 			parameter	       type axi_req_t = logic,
 			parameter	       type axi_resp_t = logic
@@ -29,6 +29,19 @@ module axi_ram_module #(
    logic				mem_rvalid;
    logic [DataWidth-1:0]		mem_rdata;
    axi_pkg::atop_t           mem_atop;
+
+   // Initialize signals to prevent X propagation at startup
+   initial begin
+      mem_req    = 1'b0;
+      mem_gnt    = 1'b1; // Keeping your grant tied high
+      mem_addr   = '0;
+      mem_wdata  = '0;
+      mem_strb   = '0;
+      mem_we     = 1'b0;
+      mem_rvalid = 1'b0;
+      mem_rdata  = '0;
+      mem_atop   = '0;
+   end
 
    assign mem_gnt = 1'b1;
    // ---------------------------
@@ -73,15 +86,4 @@ module axi_ram_module #(
 			       .rvalid_o (mem_rvalid),
 			       .rdata_o  (mem_rdata)
 			       );
-
-
-   always @(posedge clk_i) begin
-      if (mem_req)
-	$display("[%0t] MEM_REQ we=%0d addr=%h",
-		 $time, mem_we, mem_addr);
-
-      if (mem_rvalid)
-	$display("[%0t] MEM_RVALID data=%h",
-		 $time, mem_rdata);
-   end
 endmodule

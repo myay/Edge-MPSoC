@@ -11,7 +11,7 @@ localparam int unsigned TB_USER_W   = 1;
 
 // ID Widths: 4 bits for Masters, 5 bits for the Interconnect/Bridge
 localparam int unsigned TB_ID_W_SLV = 4; 
-localparam int unsigned TB_ID_W_MST = 5; // 4 bits + ceil(log2(2 Masters))
+localparam int unsigned TB_ID_W_MST = 8; // 4 bits + ceil(log2(2 Masters))
 
 // --- 1. Slave-Side Types (CPU/NPU Interface) ---
 `AXI_TYPEDEF_ALL(soc_slv, 
