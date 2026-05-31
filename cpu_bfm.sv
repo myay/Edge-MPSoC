@@ -100,6 +100,7 @@ module cpu_bfm (
                end
                // SAFETY: If the slave responds with B_VALID, the transaction
                // is effectively over. Stop driving W immediately.
+	       // signal from the Slave to the Master that the write transaction has completed and that the response information is currently available on the bus
                if (ext_mst_resp_i.b_valid) begin
                   w_handshake_done = 1'b1;
                   req.w_valid <= 1'b0;
@@ -129,44 +130,48 @@ module cpu_bfm (
 			   input logic [TB_ADDR_W-1:0]	addr,
 			   output logic [TB_DATA_W-1:0]	data
 			   );
+      logic						ar_done = 1'b0;
+      logic						r_done  = 1'b0;
 
+      // Set up request
+      req.ar.addr  = addr;
+      req.ar.id    = 4'h1;
+      req.ar.len   = 8'h0;
+      req.ar.size  = 3'b011;
+      req.ar.burst = 2'b01;
+
+      $display("[%0t] [BFM] READ LAUNCH | Addr: 0x%h", $time, addr);
+
+      // 1. Initiate Address phase
       @(negedge clk_i);
-
-      req.ar.addr  <= addr;
-      req.ar.id    <= 4'h1;
-      req.ar.len   <= 8'h00;
-      req.ar.size  <= 3'b011;
-      req.ar.burst <= 2'b01;
-
       req.ar_valid <= 1'b1;
 
-      // ---------------------------------------------------------------------
-      // Wait for AR handshake
-      // ---------------------------------------------------------------------
+      // 2. Wait for AR handshake
+      while (!ar_done) begin
+         @(posedge clk_i);
+         if (ext_mst_req_o.ar_valid && ext_mst_resp_i.ar_ready) begin
+            req.ar_valid <= 1'b0; // CRITICAL: Drop VALID immediately
+            ar_done = 1'b1;
+            $display("[%0t] [BFM] AR Handshake Complete", $time);
+         end
+      end
 
-      while (!(ext_mst_req_o.ar_valid &&
-               ext_mst_resp_i.ar_ready))
-        @(posedge clk_i);
+      // 3. Prepare for Data phase
+      req.r_ready <= 1'b1;
 
-      $display("[%0t] [BFM] AR Channel Handshake Complete",
-               $time);
-
+      // 4. Wait for RDATA
+      while (!r_done) begin
+         @(posedge clk_i);
+         if (ext_mst_resp_i.r_valid && ext_mst_req_o.r_ready) begin
+            data    = ext_mst_resp_i.r.data;
+            r_done  = 1'b1;
+            $display("[%0t] [BFM] READ COMPLETE | DATA=0x%h", $time, data);
+         end
+      end
+      
+      // 5. Cleanup
       @(negedge clk_i);
-      req.ar_valid <= 1'b0;
-
-      // ---------------------------------------------------------------------
-      // Wait for read data
-      // ---------------------------------------------------------------------
-
-      while (!ext_mst_resp_i.r_valid)
-        @(posedge clk_i);
-
-      data = ext_mst_resp_i.r.data;
-
-      $display("[%0t] [BFM] READ COMPLETE | DATA=%h",
-               $time,
-               data);
-
+      req.r_ready <= 1'b0;
    endtask
 
    // =========================================================================
