@@ -46,19 +46,22 @@ module npu_wrapper #(
    // DEBUG STATUS MONITOR
    // =========================================================================
 
+   // 1. Keep this block to monitor ERRORS (Control Plane)
    initial begin
       forever @(posedge clk_i) begin
          if (debug_rdma_status_valid) begin
-            if (debug_rdma_status_error == 4'h0) begin
-               $display("[%0t] [RDMA_OK] Transfer complete.",
-                        $time);
-            end
-            else begin
-               $display("[%0t] [RDMA_ERROR] err=%0h",
-                        $time,
-                        debug_rdma_status_error);
+            if (debug_rdma_status_error != 4'h0) begin
+               $display("[%0t] [RDMA_ERROR] err=%0h", $time, debug_rdma_status_error);
             end
          end
+      end
+   end
+
+   // 2. Add this block to monitor SUCCESS (Data Plane)
+   always @(posedge clk_i) begin
+      // We look for valid data, ready from downstream, and the TLAST pulse
+      if (npu_core_valid && npu_core_ready && npu_core_last_raw) begin
+         $display("[%0t] [RDMA_OK] Transfer complete (Data received)", $time);
       end
    end
 
