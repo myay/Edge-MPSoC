@@ -49,113 +49,76 @@ module cpu_bfm (
    // =========================================================================
    // AXI WRITE TASK
    // =========================================================================
-
    task automatic axi_write(
 			    input logic [TB_ADDR_W-1:0]	addr,
 			    input logic [TB_DATA_W-1:0]	data
 			    );
+      // Local flags to track completion
+      logic						aw_handshake_done = 1'b0;
+      logic						w_handshake_done  = 1'b0;
 
-      logic						aw_done;
-      logic						w_done;
+      // Set up the request payload
+      req.aw.addr  = addr;
+      req.aw.id    = 4'h3;
+      req.aw.len   = 8'h0;
+      req.aw.size  = 3'b011;
+      req.aw.burst = 2'b01;
 
-      slv_aw_chan_t aw_temp;
-      slv_w_chan_t  w_temp;
+      req.w.data   = data;
+      req.w.strb   = '1;
+      req.w.last   = 1'b1;
 
-      aw_done = 1'b0;
-      w_done  = 1'b0;
+      $display("[%0t] [BFM] WRITE LAUNCH | Addr: 0x%h | Data: 0x%h", $time, addr, data);
 
-      aw_temp = '0;
-      w_temp  = '0;
-
-      // ---------------------------------------------------------------------
-      // Prepare AW
-      // ---------------------------------------------------------------------
-
-      aw_temp.addr  = addr;
-      aw_temp.id    = 4'h3;
-      aw_temp.len   = 8'h00;
-      aw_temp.size  = 3'b011;
-      aw_temp.burst = 2'b01;
-
-      // ---------------------------------------------------------------------
-      // Prepare W
-      // ---------------------------------------------------------------------
-
-      w_temp.data   = data;
-      w_temp.strb   = '1;
-      w_temp.last   = 1'b1;
-
-      $display("\n[%0t] [BFM] WRITE LAUNCH | Addr: 0x%h | Data: 0x%h_%08h",
-               $time, addr, data[63:32], data[31:0]);
-
-      // ---------------------------------------------------------------------
-      // Launch transaction
-      // ---------------------------------------------------------------------
-
+      // 1. Launch the transaction
       @(negedge clk_i);
-
-      req.aw       <= aw_temp;
       req.aw_valid <= 1'b1;
-
-      req.w        <= w_temp;
       req.w_valid  <= 1'b1;
 
-      // ---------------------------------------------------------------------
-      // Wait for AW/W handshakes independently
-      // ---------------------------------------------------------------------
-
-      while (!aw_done || !w_done) begin
-
-         @(posedge clk_i);
-
-         // --------------------------------------------------------------
-         // AW handshake
-         // --------------------------------------------------------------
-
-         if (!aw_done &&
-             ext_mst_req_o.aw_valid &&
-             ext_mst_resp_i.aw_ready) begin
-
-            aw_done = 1'b1;
-
-            $display("[%0t] [BFM] AW Channel Handshake Complete",
-                     $time);
-
-            @(negedge clk_i);
-            req.aw_valid <= 1'b0;
+      // 2. Monitor handshakes in parallel to avoid stalling
+      fork
+         // AW Monitor
+         begin
+            while (!aw_handshake_done) begin
+               @(posedge clk_i);
+               if (ext_mst_req_o.aw_valid && ext_mst_resp_i.aw_ready) begin
+                  aw_handshake_done = 1'b1;
+                  req.aw_valid <= 1'b0; // Drop immediately
+                  $display("[%0t] [BFM] AW Handshake Complete", $time);
+               end
+            end
          end
 
-         // --------------------------------------------------------------
-         // W handshake
-         // --------------------------------------------------------------
-
-         if (!w_done &&
-             ext_mst_req_o.w_valid &&
-             ext_mst_resp_i.w_ready) begin
-
-            w_done = 1'b1;
-
-            $display("[%0t] [BFM] W Channel Handshake Complete",
-                     $time);
-
-            @(negedge clk_i);
-            req.w_valid <= 1'b0;
+         // W Monitor
+         begin
+            while (!w_handshake_done) begin
+               @(posedge clk_i);
+               if (ext_mst_req_o.w_valid && ext_mst_resp_i.w_ready) begin
+                  w_handshake_done = 1'b1;
+                  req.w_valid <= 1'b0; // Drop immediately
+                  $display("[%0t] [BFM] W Handshake Complete", $time);
+               end
+               // SAFETY: If the slave responds with B_VALID, the transaction
+               // is effectively over. Stop driving W immediately.
+               if (ext_mst_resp_i.b_valid) begin
+                  w_handshake_done = 1'b1;
+                  req.w_valid <= 1'b0;
+                  $display("[%0t] [BFM] W-Channel auto-stopped by B_VALID", $time);
+               end
+            end
          end
-      end
+      join
 
-      // ---------------------------------------------------------------------
-      // Wait for B response
-      // ---------------------------------------------------------------------
-
-      $display("[%0t] [BFM] Waiting for B_VALID...", $time);
-
-      while (!ext_mst_resp_i.b_valid)
-        @(posedge clk_i);
-
-      $display("[%0t] [BFM] WRITE COMPLETE | B_RESP: %b",
-               $time,
-               ext_mst_resp_i.b.resp);
-
+      // 3. Wait for Write Response (B-Channel)
+      req.b_ready <= 1'b1; // Ready to accept response
+      
+      // Wait for the response to be driven by the slave
+      wait(ext_mst_resp_i.b_valid); 
+      
+      @(posedge clk_i);
+      req.b_ready <= 1'b0; // Handshake complete, drop ready
+      
+      $display("[%0t] [BFM] WRITE COMPLETE | B_RESP: %b", $time, ext_mst_resp_i.b.resp);
    endtask
 
    // =========================================================================
