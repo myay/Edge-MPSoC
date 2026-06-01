@@ -160,6 +160,12 @@
 ./modules/npu_wrapper/regs/generated/npu_wrapper_regs.sv
 axi_dma_rd.sv
 npu_wrapper.sv 
+
+// data sampler
+./modules/data_sampler_wrapper/regs/generated/data_sampler_wrapper_regs_pkg.sv   
+./modules/data_sampler_wrapper/regs/generated/data_sampler_wrapper_regs.sv
+// axi_dma_wr.sv
+./modules/data_sampler_wrapper/data_sampler_wrapper.sv
       
 sram_behavioral.sv
 axi_sram_node.sv

@@ -1,0 +1,65 @@
+addrmap data_sampler_wrapper_regs {
+    name = "Data Sampler Control and Status Registers";
+    
+    // =========================================================================
+    // DESCRIPTOR CONFIGURATION
+    // =========================================================================
+
+    reg {
+        name = "WDMA Dest Address";
+        desc = "Base address in system memory to write sampled data.";
+        field { hw=r; sw=rw; } value[32];
+    } REG_WDMA_ADDR @0x0;
+
+    reg {
+        name = "WDMA Transfer Length";
+        desc = "Number of bytes to transfer.";
+        field { hw=r; sw=rw; } value[20];
+    } REG_WDMA_LEN @0x4;
+
+    // =========================================================================
+    // CONTROL
+    // =========================================================================
+
+    reg {
+        name = "WDMA Control";
+        desc = "Write 1 to enqueue the DMA descriptor. Self-clearing.";
+        field { 
+            hw=r; sw=w; 
+            singlepulse; 
+            reset = 1'b0;
+        } launch[1];
+    } REG_WDMA_CTRL @0x8;
+
+    // =========================================================================
+    // STATUS & POLLING
+    // =========================================================================
+
+    reg {
+        name = "WDMA Status";
+        desc = "Bit 0 indicates DMA is busy. Software should poll this.";
+        
+        field { 
+            name = "Busy";
+            hw=w; sw=r; 
+            reset = 1'b0; 
+        } busy[1] = 0; // Tie this to your skid-buffer valid OR the DMA active state
+
+        field { 
+            name = "Transfer Complete";
+            desc = "Pulses high or sets when m_axis_write_desc_status_valid fires.";
+            hw=w; sw=r; 
+            reset = 1'b0; 
+        } done[1] = 0;
+    } REG_WDMA_STATUS @0xC;
+
+    reg {
+        name = "WDMA Error Code";
+        desc = "Captures m_axis_write_desc_status_error on completion.";
+        field { hw=w; sw=r; reset = 4'h0; } error[4] = 0;
+    } REG_WDMA_ERR @0x10;
+};
+
+// peakrdl html data_sampler_wrapper_regs.rdl -o ./docs/register_map/
+
+// peakrdl regblock data_sampler_wrapper_regs.rdl -o generated/ --cpuif axi4-lite-flat
