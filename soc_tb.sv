@@ -79,6 +79,24 @@ module soc_tb;
       // $display("[TB] Force complete. Checking for DMA startup...");
       // /// *** temporary
       $display(">>>[TB] End NPU rdma configuration.");
+      
+      #1000;
+
+      $display(">>>[TB] Starting DS wdma via AXI Bus...");
+      i_soc.i_cpu_bfm.axi_write(32'h0002_0008, 64'h0000_0000_0000_0001);
+      $display(">>>[TB] End DS wdma configuration.");
+
+      /* -----\/----- EXCLUDED -----\/-----
+       // Wait for completion by polling the Busy bit
+       while (read_reg(REG_WDMA_STATUS) & 0x1) {
+       // Wait...
+       }
+       // Check if it threw an error during the transfer
+       uint32_t err = read_reg(REG_WDMA_ERR);
+       if (err != 0) {
+       printf("DMA AXI Error Code: %d\n", err);
+       }
+       -----/\----- EXCLUDED -----/\----- */
 
       #1000;
       $display(">>>Simulation limit reached. Ending...");
