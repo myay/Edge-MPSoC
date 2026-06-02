@@ -2,6 +2,7 @@
 +incdir+../include
 +incdir+.
 
+ // pulp/axi stuff
 ../src/axi_pkg.sv
 ../common_cells_repo/src/cf_math_pkg.sv
 ../common_cells_repo/src/cb_filter_pkg.sv
@@ -164,7 +165,7 @@ npu_wrapper.sv
 // data sampler
 ./modules/data_sampler_wrapper/regs/generated/data_sampler_wrapper_regs_pkg.sv   
 ./modules/data_sampler_wrapper/regs/generated/data_sampler_wrapper_regs.sv
-// axi_dma_wr.sv
+./modules/dma/axi_dma_wr.sv
 ./modules/data_sampler_wrapper/data_sampler_wrapper.sv
       
 sram_behavioral.sv
