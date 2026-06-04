@@ -69,7 +69,7 @@ module soc_tb;
 
       // 1. Write the Source SRAM Base Address to REG_RDMA_ADDR (Offset 0x0)
       // Base (32'h0001_0000) + 0x0 = 32'h0001_0000 | Data = 32'h0000_0010
-      i_soc.i_cpu_bfm.axi_write(32'h0001_0000, 64'h0000_0000_0000_00BB);
+      i_soc.i_cpu_bfm.axi_write(32'h0001_0000, 64'h0000_0000_0000_00B8);
 
       // 2. Write the transfer length (63 bytes) to REG_RDMA_LEN (Offset 0x4)
       // Base (32'h0001_0000) + 0x4 = 32'h0001_0004 | Data = 20'd63 (32'h0000_003F)
