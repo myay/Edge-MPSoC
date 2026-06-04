@@ -47,7 +47,7 @@ module soc_tb;
       #1000;
 
       $display(">>>[TB] Starting DS wdma via AXI Bus...");
-      i_soc.i_cpu_bfm.axi_write(32'h0002_0000, 64'h0000_0000_0000_00BB);
+      i_soc.i_cpu_bfm.axi_write(32'h0002_0000, 64'h0000_0000_0000_00B8);
       i_soc.i_cpu_bfm.axi_write(32'h0002_0004, 64'h0000_0000_0000_0020);
       i_soc.i_cpu_bfm.axi_write(32'h0002_0008, 64'h0000_0000_0000_0001);
       $display(">>>[TB] End DS wdma configuration.");

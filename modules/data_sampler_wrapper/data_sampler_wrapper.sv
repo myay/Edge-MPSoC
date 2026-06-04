@@ -4,6 +4,7 @@
 //    Data Sampler Top-Level Wrapper.
 //    Converts configuration AXI to AXI-Lite, implements register file,
 //    and uses a descriptor skid-buffer to drive the Write DMA (WDMA).
+//    Includes an internal Dummy Data Generator for simulation validation.
 // ============================================================================
 
 `include "axi_typedefs.svh"
@@ -85,7 +86,7 @@ module data_sampler #(
       if (!rst_ni) begin
          wdma_error_q <= 4'h0;
       end else begin
-         // Optional: Clear the error code when a new transfer is launched
+         // Clear the error code when a new transfer is launched
          if (wdma_valid) begin
             wdma_error_q <= 4'h0;
          end
@@ -94,7 +95,7 @@ module data_sampler #(
             wdma_error_q <= debug_wdma_status_error;
          end
       end
-   end // always_ff @ (posedge clk_i or negedge rst_ni)
+   end 
    
    // =========================================================================
    // AXI-LITE WIRES
@@ -109,14 +110,14 @@ module data_sampler #(
    logic [1:0]	s_axil_rresp;
 
    logic	s_axil_awvalid;
-   logic [4:0]	s_axil_awaddr; // 5-bit matching your flat regfile component
+   logic [4:0]	s_axil_awaddr; 
    logic [2:0]	s_axil_awprot;
    logic	s_axil_wvalid;
    logic [31:0]	s_axil_wdata;
    logic [3:0]	s_axil_wstrb;
    logic	s_axil_bready;
    logic	s_axil_arvalid;
-   logic [4:0]	s_axil_araddr; // 5-bit matching your flat regfile component
+   logic [4:0]	s_axil_araddr; 
    logic [2:0]	s_axil_arprot;
    logic	s_axil_rready;
 
@@ -164,7 +165,7 @@ module data_sampler #(
    end 
 
    // =========================================================================
-   // DATA SAMPLER STREAM SIGNALS (Input to Write DMA)
+   // DATA SAMPLER STREAM SIGNALS & DUMMY GENERATOR
    // =========================================================================
    logic [63:0] sampler_axis_data;
    logic	sampler_axis_valid;
@@ -172,15 +173,48 @@ module data_sampler #(
    logic [7:0]	sampler_axis_keep;
    logic	sampler_axis_last;
 
-   // TODO: Hook up your real ADC/Front-end sampling pipeline here.
-   // For now, this is a placeholder structural loopback loop/tie-off:
-   assign sampler_axis_data  = 64'hDEADBEEFCAFEF00D;
+   logic [63:0]	dummy_data_q;
+   logic [19:0]	beats_remaining_q;
+   logic	is_streaming_q;
+
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+         dummy_data_q      <= 64'd2;
+         beats_remaining_q <= '0;
+         is_streaming_q    <= 1'b0;
+      end else begin
+         // 1. Initialize stream when DMA acknowledges the descriptor
+         if (desc_valid_q && wdma_desc_ready) begin
+            if (desc_len_q >= 8) begin // Ensure minimum valid transfer size
+               is_streaming_q    <= 1'b1;
+               // Convert bytes to 64-bit (8 byte) beats
+               beats_remaining_q <= desc_len_q[19:3]; 
+               dummy_data_q      <= 64'd2; // Reset counter back to 2
+            end
+         end
+         // 2. Active streaming phase
+         else if (is_streaming_q) begin
+            if (sampler_axis_valid && sampler_axis_ready) begin
+               dummy_data_q <= dummy_data_q + 1;
+               
+               if (beats_remaining_q == 20'd1) begin
+                  is_streaming_q    <= 1'b0; // Terminate burst
+                  beats_remaining_q <= '0;
+               end else begin
+                  beats_remaining_q <= beats_remaining_q - 1;
+               end
+            end
+         end
+      end
+   end
+
+   assign sampler_axis_data  = dummy_data_q;
    assign sampler_axis_keep  = 8'hFF;
-   assign sampler_axis_valid = desc_valid_q; // Simple streaming dummy valid
-   assign sampler_axis_last  = 1'b1;
+   assign sampler_axis_valid = is_streaming_q;
+   assign sampler_axis_last  = (beats_remaining_q == 20'd1) && is_streaming_q;
 
    // WDMA status monitoring wires
-   logic [19:0]	debug_wdma_status_len;
+   logic [19:0] debug_wdma_status_len;
    logic [7:0]	debug_wdma_status_tag;
    logic	debug_wdma_status_valid;
    logic [3:0]	debug_wdma_status_error;
@@ -311,15 +345,15 @@ module data_sampler #(
    // AXI4 -> AXI-LITE BRIDGE
    // =========================================================================
    axi_to_axi_lite #(
-		     .AxiAddrWidth    ( 32              ),
-		     .AxiDataWidth    ( 64              ),
-		     .AxiIdWidth      ( 4              ),
-		     .AxiUserWidth    ( 1              ),
-		     .AxiMaxWriteTxns ( 2              ),
-		     .AxiMaxReadTxns  ( 2              ),
-		     .FullBW          ( 1'b0            ),
-		     .FallThrough     ( 1'b1            ),
-		     .full_req_t      ( axi_cfg_req_t   ),
+		     .AxiAddrWidth    ( 32               ),
+		     .AxiDataWidth    ( 64               ),
+		     .AxiIdWidth      ( 4                ),
+		     .AxiUserWidth    ( 1                ),
+		     .AxiMaxWriteTxns ( 2                ),
+		     .AxiMaxReadTxns  ( 2                ),
+		     .FullBW          ( 1'b0             ),
+		     .FallThrough     ( 1'b1             ),
+		     .full_req_t      ( axi_cfg_req_t    ),
 		     .full_resp_t     ( axi_cfg_resp_t ),
 		     .lite_req_t      ( axi_lite_req_t  ),
 		     .lite_resp_t     ( axi_lite_resp_t )
