@@ -3,3 +3,7 @@
 
 - then all the required files should be there
   
+peakrdl:
+- write .rdl file
+- peakrdl html data_sampler_wrapper_regs.rdl -o ./docs/register_map/
+- peakrdl regblock data_sampler_wrapper_regs.rdl -o generated/ --cpuif axi4-lite-flat

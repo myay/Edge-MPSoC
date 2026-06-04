@@ -1,9 +1,0 @@
-git clone https://github.com/pulp-platform/axi
-also clone common_cells repo
-
-peakrdl:
-write .rdl file
-peakrdl regblock your_design.rdl --cpuif axi4-lite -o ./generated_rtl/
-
-create the html:
-peakrdl html npu_wrapper.rdl -o ./docs/register_map/

@@ -28,7 +28,7 @@ module sram_behavioral #(
 
    initial begin
       $readmemh(
-		"/home/mikail/digital-design/interconnect/axi/own_axi_interconnect/sram_init.mem",
+		"/home/mikail/digital-design/interconnect/axi/own_axi_interconnect/modules/sram_node/sram_init.mem",
 		mem
 		);
    end

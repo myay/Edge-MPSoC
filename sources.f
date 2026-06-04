@@ -1,6 +1,8 @@
+// pulp-specific includes
 +incdir+../src
 +incdir+../include
-+incdir+.
+// this repo
++incdir+./include
 
  // pulp/axi stuff
 ../src/axi_pkg.sv
@@ -159,18 +161,22 @@
 // npu  
 ./modules/npu_wrapper/regs/generated/npu_wrapper_regs_pkg.sv   
 ./modules/npu_wrapper/regs/generated/npu_wrapper_regs.sv
-axi_dma_rd.sv
-npu_wrapper.sv 
+./modules/dma/axi_dma_rd.sv
+./modules/npu_wrapper/npu_wrapper.sv 
 
 // data sampler
 ./modules/data_sampler_wrapper/regs/generated/data_sampler_wrapper_regs_pkg.sv   
 ./modules/data_sampler_wrapper/regs/generated/data_sampler_wrapper_regs.sv
 ./modules/dma/axi_dma_wr.sv
 ./modules/data_sampler_wrapper/data_sampler_wrapper.sv
-      
-sram_behavioral.sv
-axi_sram_node.sv
-cpu_bfm.sv
-soc.sv
-soc_tb.sv
-top.sv
+
+// sram node      
+./modules/sram_node/sram_behavioral.sv
+./modules/sram_node/axi_sram_node.sv
+
+// cpu
+./modules/cpu_bfm/cpu_bfm.sv
+
+// soc
+./modules/soc_top/soc.sv
+./modules/soc_top/soc_tb.sv
