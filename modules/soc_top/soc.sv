@@ -124,7 +124,7 @@ module soc #(
 								  };
 
    // =========================================================================
-   // 7. CPU BFM
+   // 7. CPU BFM & DUMMY PICO INSTANTIATION
    // =========================================================================
 
    cpu_bfm i_cpu_bfm (
@@ -133,6 +133,40 @@ module soc #(
 		      .ext_mst_req_o  ( bfm_req ),
 		      .ext_mst_resp_i ( bfm_resp )
 		      );
+
+   // Sanity-check instantiation of PicoRV32 (Isolated / Not connected to crossbar)
+   cpu_picorv32_axi i_cpu_picorv32_sanity (
+					   .clk         ( clk_i  ),
+					   .resetn      ( rst_ni ),
+					   .cpu_trap    (        ), // Floating output
+
+					   // AXI Write Address Channel
+					   .axi_awaddr  (        ), // Floating output
+					   .axi_awvalid (        ), // Floating output
+					   .axi_awready ( 1'b0   ), // Tied low
+
+					   // AXI Write Data Channel
+					   .axi_wdata   (        ), // Floating output
+					   .axi_wstrb   (        ), // Floating output
+					   .axi_wvalid  (        ), // Floating output
+					   .axi_wready  ( 1'b0   ), // Tied low
+
+					   // AXI Write Response Channel
+					   .axi_bresp   ( 2'b00  ), // Tied low
+					   .axi_bvalid  ( 1'b0   ), // Tied low
+					   .axi_bready  (        ), // Floating output
+
+					   // AXI Read Address Channel
+					   .axi_araddr  (        ), // Floating output
+					   .axi_arvalid (        ), // Floating output
+					   .axi_arready ( 1'b0   ), // Tied low
+
+					   // AXI Read Data Channel
+					   .axi_rdata   ( 32'b0  ), // Tied low
+					   .axi_rresp   ( 2'b00  ), // Tied low
+					   .axi_rvalid  ( 1'b0   ), // Tied low
+					   .axi_rready  (        )  // Floating output
+					   );
 
    // =========================================================================
    // 8. XBAR CONFIG (Expanded for 3x3)

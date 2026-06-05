@@ -176,7 +176,9 @@
 
 // cpu
 ./modules/cpu_bfm/cpu_bfm.sv
-
+./modules/picorv32/picorv32.v
+./modules/picorv32/cpu_picorv32_axi.sv
+      
 // soc
 ./modules/soc_top/soc.sv
 ./modules/soc_top/soc_tb.sv
