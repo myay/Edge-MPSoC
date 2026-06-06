@@ -109,19 +109,19 @@ module soc #(
 
    localparam		   my_xbar_rule_t [2:0] xbar_addr_map = '{
 								  2: '{
-								       idx:        32'd2,
+								       idx:        32'd2, // data sampler config
 								       start_addr: 32'h00020000,
 								       end_addr:   32'h0002FFFF
 								       },
 								  1: '{
-								       idx:        32'd1,
+								       idx:        32'd1, // NPU config
 								       start_addr: 32'h00010000,
-								       end_addr:   32'h0001FFFF
+								       end_addr:   32'h0001FFFF 
 								       },
 								  0: '{
-								       idx:        32'd0,
+								       idx:        32'd0, // SRAM
 								       start_addr: 32'h00000000,
-								       end_addr:   32'h0000FFFF
+								       end_addr:   32'h0000FFFF // 64KB SRAM
 								       }
 								  };
 
@@ -148,10 +148,10 @@ module soc #(
 					.cpu_trap    ( /* connect to a top-level pin or monitor */ ),
 					
 					// Plugs perfectly into the struct array you already defined
-					//.axi_req_o   ( slv_reqs[3] ),
-					//.axi_resp_i  ( slv_resps[3] )
-					.axi_req_o   ( ),
-					.axi_resp_i  ( )
+					.axi_req_o   ( slv_reqs[3] ),
+					.axi_resp_i  ( slv_resps[3] )
+					//.axi_req_o   ( ),
+					//.axi_resp_i  ( )
 					);
 
    // =========================================================================
