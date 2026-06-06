@@ -21,8 +21,8 @@ module soc #(
    // 1. INTERCONNECT STRUCTURE ARRAYS (Expanded to 3 ports)
    // =========================================================================
 
-   slv_req_t [2:0] slv_reqs;
-   slv_resp_t [2:0] slv_resps;
+   slv_req_t [3:0] slv_reqs;
+   slv_resp_t [3:0] slv_resps;
 
    mst_req_t [2:0] mst_reqs;
    mst_resp_t [2:0] mst_resps;
@@ -42,10 +42,10 @@ module soc #(
    // =========================================================================
 
    // Crossbar Input Request signals 
-   slv_req_t [2:0] xbar_slv_reqs_q;
+   slv_req_t [3:0] xbar_slv_reqs_q;
 
    // Responses from xbar
-   slv_resp_t [2:0] xbar_slv_resps;
+   slv_resp_t [3:0] xbar_slv_resps;
 
    // Master side
    mst_req_t [2:0] xbar_mst_reqs;
@@ -57,10 +57,12 @@ module soc #(
    assign xbar_slv_reqs_q[0] = slv_reqs[0];
    assign xbar_slv_reqs_q[1] = slv_reqs[1];
    assign xbar_slv_reqs_q[2] = slv_reqs[2];
+   assign xbar_slv_reqs_q[3] = slv_reqs[3]; // New CPU_S Port
 
    assign slv_resps[0] = xbar_slv_resps[0];
    assign slv_resps[1] = xbar_slv_resps[1];
    assign slv_resps[2] = xbar_slv_resps[2];
+   assign slv_resps[3] = xbar_slv_resps[3]; // New CPU_S Port
 
    // =========================================================================
    // 4. MASTER PORT CONNECTIONS
@@ -146,8 +148,8 @@ module soc #(
 					.cpu_trap    ( /* connect to a top-level pin or monitor */ ),
 					
 					// Plugs perfectly into the struct array you already defined
-					//.axi_req_o   ( slv_reqs[0] ),
-					//.axi_resp_i  ( slv_resps[0] )
+					//.axi_req_o   ( slv_reqs[3] ),
+					//.axi_resp_i  ( slv_resps[3] )
 					.axi_req_o   ( ),
 					.axi_resp_i  ( )
 					);
@@ -157,7 +159,7 @@ module soc #(
    // =========================================================================
 
    localparam		   axi_pkg::xbar_cfg_t XbarCfg = '{
-							   NoSlvPorts:         32'd3,
+							   NoSlvPorts:         32'd4,
 							   NoMstPorts:         32'd3,
 							   MaxMstTrans:        32'd8,
 							   MaxSlvTrans:        32'd8,
@@ -172,10 +174,12 @@ module soc #(
 							   PipelineStages:     0
 							   };
 
-   localparam bit [2:0][2:0] XbarConnectivity = '{
-						  '{1'b1, 1'b1, 1'b1},
-						  '{1'b1, 1'b1, 1'b1},
-						  '{1'b1, 1'b1, 1'b1}
+   // Rows = Requesting Masters (4), Columns = Targets (3)
+   localparam bit [3:0][2:0] XbarConnectivity = '{
+						  '{1'b1, 1'b1, 1'b1}, // Port 3: CPU_S (PicoRV32) needs to see RAM, NPU Cfg, Sampler Cfg
+						  '{1'b1, 1'b1, 1'b1}, // Port 2: Data Sampler ONLY needs to see RAM
+						  '{1'b1, 1'b1, 1'b1}, // Port 1: NPU ONLY needs to see RAM
+						  '{1'b1, 1'b1, 1'b1}  // Port 0: CPU_L (BFM) needs to see RAM, NPU Cfg, Sampler Cfg
 						  };
 
    // =========================================================================
@@ -281,39 +285,36 @@ module soc #(
    end
 
    // ----------------------------------------------------------------------------
-   // PHASE 1: AXI PROTOCOL COMPLIANCE CHECKS (Evaluated every clock edge)
+   // PHASE 1: AXI PROTOCOL COMPLIANCE CHECKS
    // ----------------------------------------------------------------------------
    always @(posedge clk_i) begin
-      // Rule A: Reset Compliance (All VALID signals must be low during reset)
       if (!rst_ni) begin
-         for (int i = 0; i < 3; i++) begin
+         for (int i = 0; i < 4; i++) begin // Updated to 4
             if (xbar_slv_reqs_q[i].aw_valid || xbar_slv_reqs_q[i].ar_valid || xbar_slv_reqs_q[i].w_valid) begin
                $error("[AXI PROTOCOL VIOLATION] Slave Port %0d asserted VALID signals during active reset!", i);
             end
+         end
+         for (int i = 0; i < 3; i++) begin
             if (xbar_mst_reqs[i].aw_valid || xbar_mst_reqs[i].ar_valid || xbar_mst_reqs[i].w_valid) begin
                $error("[AXI PROTOCOL VIOLATION] XBAR Master Port %0d asserted VALID signals during active reset!", i);
             end
          end
       end
 
-      // Rule B: Handshake Payload Stability (Once VALID is up, it and payload cannot change until READY)
-      if (rst_ni && $time > 10000) begin // Skip initial transient startup tick
-         for (int s = 0; s < 3; s++) begin
-            // Slave Write Address Stability
+      if (rst_ni && $time > 10000) begin 
+         for (int s = 0; s < 4; s++) begin // Updated to 4
             if ($past(xbar_slv_reqs_q[s].aw_valid) && !$past(xbar_slv_resps[s].aw_ready)) begin
                if (!xbar_slv_reqs_q[s].aw_valid)
                  $error("[AXI PROTOCOL VIOLATION] Slave Port %0d: AW_VALID dropped before AW_READY handshake!", s);
                if (xbar_slv_reqs_q[s].aw.addr != $past(xbar_slv_reqs_q[s].aw.addr))
                  $error("[AXI PROTOCOL VIOLATION] Slave Port %0d: AW_ADDR changed payload while waiting for AW_READY!", s);
             end
-            // Slave Read Address Stability
             if ($past(xbar_slv_reqs_q[s].ar_valid) && !$past(xbar_slv_resps[s].ar_ready)) begin
                if (!xbar_slv_reqs_q[s].ar_valid)
                  $error("[AXI PROTOCOL VIOLATION] Slave Port %0d: AR_VALID dropped before AR_READY handshake!", s);
                if (xbar_slv_reqs_q[s].ar.addr != $past(xbar_slv_reqs_q[s].ar.addr))
                  $error("[AXI PROTOCOL VIOLATION] Slave Port %0d: AR_ADDR changed payload while waiting for AR_READY!", s);
             end
-            // Slave Write Data Stability
             if ($past(xbar_slv_reqs_q[s].w_valid) && !$past(xbar_slv_resps[s].w_ready)) begin
                if (!xbar_slv_reqs_q[s].w_valid)
                  $error("[AXI PROTOCOL VIOLATION] Slave Port %0d: W_VALID dropped before W_READY handshake!", s);
@@ -323,7 +324,6 @@ module soc #(
          end
 
          for (int m = 0; m < 3; m++) begin
-            // Master Read Data Return Stability
             if ($past(xbar_mst_resps[m].r_valid) && !$past(xbar_mst_reqs[m].r_ready)) begin
                if (!xbar_mst_resps[m].r_valid)
                  $error("[AXI PROTOCOL VIOLATION] Master Port %0d: R_VALID dropped before R_READY handshake!", m);
@@ -335,12 +335,11 @@ module soc #(
    end
 
    // ----------------------------------------------------------------------------
-   // PHASE 2: TRAFFIC LOGGING - ALL INBOUND TRAFFIC INTO THE INTERCONNECT
+   // PHASE 2: TRAFFIC LOGGING - INBOUND
    // ----------------------------------------------------------------------------
    always @(posedge clk_i) begin
       if (rst_ni) begin
-         // Inputs from Requesting Masters (CPU / NPU / Sampler)
-         for (int s = 0; s < 3; s++) begin
+         for (int s = 0; s < 4; s++) begin // Updated to 4
             if (xbar_slv_reqs_q[s].aw_valid && xbar_slv_resps[s].aw_ready) begin
                $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: WRITE] ---------- SLAVE PORT %0d: WRITE ADDRESS (AW) ----------", $time, s);
                $display("    AW_ADDR : 0x%8h", xbar_slv_reqs_q[s].aw.addr);
@@ -358,7 +357,6 @@ module soc #(
             end
          end
 
-         // Inbound Responses from Target Subsystems (RAM / NPU Config / Sampler Config)
          for (int m = 0; m < 3; m++) begin
             if (xbar_mst_resps[m].b_valid && xbar_mst_reqs[m].b_ready) begin
                $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: WRITE] ---------- MASTER PORT %0d (%s): WRITE RESPONSE (B) --", $time, m, (m == 0) ? "RAM" : (m == 1) ? "NPU" : "SAMPLER");
@@ -376,11 +374,10 @@ module soc #(
    end
 
    // ----------------------------------------------------------------------------
-   // PHASE 3: TRAFFIC LOGGING - ALL OUTBOUND TRAFFIC ROUTED OUT OF INTERCONNECT
+   // PHASE 3: TRAFFIC LOGGING - OUTBOUND
    // ----------------------------------------------------------------------------
    always @(posedge clk_i) begin
       if (rst_ni) begin
-         // Outbound Commands Routed to Subsystems
          for (int m = 0; m < 3; m++) begin
             if (xbar_mst_reqs[m].aw_valid && xbar_mst_resps[m].aw_ready) begin
                $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: WRITE] --------- MASTER PORT %0d (%s): WRITE ADDRESS (AW) -", $time, m, (m == 0) ? "RAM" : (m == 1) ? "NPU" : "SAMPLER");
@@ -399,8 +396,7 @@ module soc #(
             end
          end
 
-         // Outbound Back-routed Responses on the way back to the Masters
-         for (int s = 0; s < 3; s++) begin
+         for (int s = 0; s < 4; s++) begin // Updated to 4
             if (xbar_slv_resps[s].b_valid && xbar_slv_reqs_q[s].b_ready) begin
                $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: WRITE] --------- SLAVE PORT %0d: WRITE RESPONSE (B) ---------", $time, s);
                $display("    B_ID    : 0x%1h",    xbar_slv_resps[s].b.id);
@@ -415,7 +411,6 @@ module soc #(
          end
       end
    end
-
 `endif
    // synopsys translate_on
 
@@ -426,10 +421,7 @@ module soc #(
    // synopsys translate_off
 `ifndef SYNTHESIS
    always_ff @(posedge clk_i) begin
-      // Wait for reset to de-assert before checking for uninitialized states
       if (rst_ni) begin
-         
-         // Check Target Responses driving back into the Crossbar
          if ($isunknown(ram_isolated_resp.aw_ready)) 
            $error("[FATAL X-DETECT] RAM AW_READY is undefined ('X')");
          if ($isunknown(ram_isolated_resp.w_ready))  
@@ -445,31 +437,35 @@ module soc #(
          if ($isunknown(ds_config_isolated_resp.w_ready))  
            $error("[FATAL X-DETECT] Sampler Config W_READY is undefined ('X')");
 
-         // Check Crossbar Responses driving back to the Masters
          if ($isunknown(bfm_resp.aw_ready)) 
            $error("[FATAL X-DETECT] Crossbar -> CPU BFM AW_READY is undefined ('X')");
          if ($isunknown(bfm_resp.w_ready))  
            $error("[FATAL X-DETECT] Crossbar -> CPU BFM W_READY is undefined ('X')");
-         
       end
    end
 `endif
    // synopsys translate_on
 
    // ============================================================================
-   // AXI STALL TRACER (Place in soc.sv)
+   // AXI STALL TRACER
    // ============================================================================
    // synopsys translate_off
 `ifndef SYNTHESIS
    always @(posedge clk_i) begin
+      // Monitor CPU_L (Port 0)
       if (slv_reqs[0].aw_valid && !slv_resps[0].aw_ready) begin
-         
-         $display("[%0t] [STALL TRACE] CPU is driving AW_VALID=1, but Crossbar AW_READY=0", $time);
-         
+         $display("[%0t] [STALL TRACE] CPU_L (BFM) is driving AW_VALID=1, but Crossbar AW_READY=0", $time);
          $display("    -> Route to RAM     : AW_VALID=%b | AW_READY=%b", mst_reqs[0].aw_valid, mst_resps[0].aw_ready);
          $display("    -> Route to NPU     : AW_VALID=%b | AW_READY=%b", mst_reqs[1].aw_valid, mst_resps[1].aw_ready);
          $display("    -> Route to SAMPLER : AW_VALID=%b | AW_READY=%b", mst_reqs[2].aw_valid, mst_resps[2].aw_ready);
-         
+      end
+      
+      // Monitor CPU_S (Port 3)
+      if (slv_reqs[3].aw_valid && !slv_resps[3].aw_ready) begin
+         $display("[%0t] [STALL TRACE] CPU_S (PicoRV32) is driving AW_VALID=1, but Crossbar AW_READY=0", $time);
+         $display("    -> Route to RAM     : AW_VALID=%b | AW_READY=%b", mst_reqs[0].aw_valid, mst_resps[0].aw_ready);
+         $display("    -> Route to NPU     : AW_VALID=%b | AW_READY=%b", mst_reqs[1].aw_valid, mst_resps[1].aw_ready);
+         $display("    -> Route to SAMPLER : AW_VALID=%b | AW_READY=%b", mst_reqs[2].aw_valid, mst_resps[2].aw_ready);
       end
    end
 `endif
