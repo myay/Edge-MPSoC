@@ -307,8 +307,6 @@ module soc #(
    // ============================================================================
    // SIMULATION-ONLY DEBUG TRACKER & PROTOCOL CHECKER
    // ============================================================================
-   // synopsys translate_off
-`ifndef SYNTHESIS
 
    initial begin
       $display("\n[SOC_Interconnect_Engine] Ordered Tracking & Protocol Compliance Active.");
@@ -363,31 +361,33 @@ module soc #(
          end
       end
    end
-
+   
    // ----------------------------------------------------------------------------
    // PHASE 2: TRAFFIC LOGGING - INBOUND
    // ----------------------------------------------------------------------------
    always @(posedge clk_i) begin
       if (rst_ni) begin
          for (int s = 0; s < 4; s++) begin 
+            automatic string initiator = (s == 0) ? "CPU_L" : (s == 3) ? "CPU_S" : $sformatf("PORT_%0d", s);
+
             if (xbar_slv_reqs_q[s].aw_valid && xbar_slv_resps[s].aw_ready) begin
-               $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: WRITE] ---------- SLAVE PORT %0d: WRITE ADDRESS (AW) ----------", $time, s);
+               $display("\n>>> [TIME: %0t ps] [INTO XBAR] [%s WRITE] ---------- SLAVE PORT %0d: WRITE ADDRESS (AW) ----------", $time, initiator, s);
                $display("    AW_ADDR : 0x%8h", xbar_slv_reqs_q[s].aw.addr);
                $display("    AW_ID   : 0x%1h",    xbar_slv_reqs_q[s].aw.id);
             end
             if (xbar_slv_reqs_q[s].w_valid && xbar_slv_resps[s].w_ready) begin
-               $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: WRITE] ---------- SLAVE PORT %0d: WRITE DATA (W) -------------", $time, s);
+               $display("\n>>> [TIME: %0t ps] [INTO XBAR] [%s WRITE] ---------- SLAVE PORT %0d: WRITE DATA (W) -------------", $time, initiator, s);
                $display("    W_DATA  : 0x%16h", xbar_slv_reqs_q[s].w.data);
-               $display("    W_LAST  : %1b",       xbar_slv_reqs_q[s].w.last);
+               $display("    W_LAST  : %1b",        xbar_slv_reqs_q[s].w.last);
             end
             if (xbar_slv_reqs_q[s].ar_valid && xbar_slv_resps[s].ar_ready) begin
-               $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: READ] ----------- SLAVE PORT %0d: READ ADDRESS (AR) -----------", $time, s);
+               $display("\n>>> [TIME: %0t ps] [INTO XBAR] [%s READ] ----------- SLAVE PORT %0d: READ ADDRESS (AR) -----------", $time, initiator, s);
                $display("    AR_ADDR : 0x%8h", xbar_slv_reqs_q[s].ar.addr);
                $display("    AR_ID   : 0x%1h",    xbar_slv_reqs_q[s].ar.id);
             end
          end
 
-         for (int m = 0; m < 4; m++) begin // Updated to 4
+         for (int m = 0; m < 4; m++) begin 
             if (xbar_mst_resps[m].b_valid && xbar_mst_reqs[m].b_ready) begin
                $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: WRITE] ---------- MASTER PORT %0d (%s): WRITE RESPONSE (B) --", $time, m, (m == 0) ? "RAM_EXEC" : (m == 1) ? "NPU" : (m == 2) ? "SAMPLER" : "RAM_DATA");
                $display("    B_ID    : 0x%1h",    xbar_mst_resps[m].b.id);
@@ -397,7 +397,7 @@ module soc #(
                $display("\n>>> [TIME: %0t ps] [INTO XBAR] [TYPE: READ] ----------- MASTER PORT %0d (%s): READ DATA (R) -------", $time, m, (m == 0) ? "RAM_EXEC" : (m == 1) ? "NPU" : (m == 2) ? "SAMPLER" : "RAM_DATA");
                $display("    R_DATA  : 0x%16h", xbar_mst_resps[m].r.data);
                $display("    R_ID    : 0x%1h",    xbar_mst_resps[m].r.id);
-               $display("    R_LAST  : %1b",       xbar_mst_resps[m].r.last);
+               $display("    R_LAST  : %1b",        xbar_mst_resps[m].r.last);
             end
          end
       end
@@ -408,7 +408,7 @@ module soc #(
    // ----------------------------------------------------------------------------
    always @(posedge clk_i) begin
       if (rst_ni) begin
-         for (int m = 0; m < 4; m++) begin // Updated to 4
+         for (int m = 0; m < 4; m++) begin 
             if (xbar_mst_reqs[m].aw_valid && xbar_mst_resps[m].aw_ready) begin
                $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: WRITE] --------- MASTER PORT %0d (%s): WRITE ADDRESS (AW) -", $time, m, (m == 0) ? "RAM_EXEC" : (m == 1) ? "NPU" : (m == 2) ? "SAMPLER" : "RAM_DATA");
                $display("    AW_ADDR : 0x%8h", xbar_mst_reqs[m].aw.addr);
@@ -417,7 +417,7 @@ module soc #(
             if (xbar_mst_reqs[m].w_valid && xbar_mst_resps[m].w_ready) begin
                $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: WRITE] --------- MASTER PORT %0d (%s): WRITE DATA (W) ------", $time, m, (m == 0) ? "RAM_EXEC" : (m == 1) ? "NPU" : (m == 2) ? "SAMPLER" : "RAM_DATA");
                $display("    W_DATA  : 0x%16h", xbar_mst_reqs[m].w.data);
-               $display("    W_LAST  : %1b",       xbar_mst_reqs[m].w.last);
+               $display("    W_LAST  : %1b",        xbar_mst_reqs[m].w.last);
             end
             if (xbar_mst_reqs[m].ar_valid && xbar_mst_resps[m].ar_ready) begin
                $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: READ] ---------- MASTER PORT %0d (%s): READ ADDRESS (AR) --", $time, m, (m == 0) ? "RAM_EXEC" : (m == 1) ? "NPU" : (m == 2) ? "SAMPLER" : "RAM_DATA");
@@ -427,22 +427,22 @@ module soc #(
          end
 
          for (int s = 0; s < 4; s++) begin 
+            automatic string initiator = (s == 0) ? "CPU_L" : (s == 3) ? "CPU_S" : $sformatf("PORT_%0d", s);
+
             if (xbar_slv_resps[s].b_valid && xbar_slv_reqs_q[s].b_ready) begin
-               $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: WRITE] --------- SLAVE PORT %0d: WRITE RESPONSE (B) ---------", $time, s);
+               $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [%s WRITE RESP] --------- SLAVE PORT %0d: WRITE RESPONSE (B) ---------", $time, initiator, s);
                $display("    B_ID    : 0x%1h",    xbar_slv_resps[s].b.id);
                $display("    B_RESP  : 2'b%2b",   xbar_slv_resps[s].b.resp);
             end
             if (xbar_slv_resps[s].r_valid && xbar_slv_reqs_q[s].r_ready) begin
-               $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [TYPE: READ] ---------- SLAVE PORT %0d: READ DATA (R) ------------", $time, s);
+               $display("\n<<< [TIME: %0t ps] [OUT OF XBAR] [%s READ RESP] ---------- SLAVE PORT %0d: READ DATA (R) ------------", $time, initiator, s);
                $display("    R_DATA  : 0x%16h", xbar_slv_resps[s].r.data);
                $display("    R_ID    : 0x%1h",    xbar_slv_resps[s].r.id);
-               $display("    R_LAST  : %1b",       xbar_slv_resps[s].r.last);
+               $display("    R_LAST  : %1b",        xbar_slv_resps[s].r.last);
             end
          end
       end
    end
-`endif
-   // synopsys translate_on
 
 
    // ============================================================================
