@@ -21,35 +21,51 @@ module soc_tb;
       #50 rst_n = 1;
 
       // --- Write Phase ---
-      $display(">>>[TB] Starting AXI Write...");
-      i_soc.i_cpu_bfm.axi_write(32'h0000_0010, 64'hDEADBEEFCAFEBABE); 
+      $display(">>>[TB] Starting AXI Write SRAM exec");
+      i_soc.i_cpu_bfm.axi_write(32'h0000_00FF, 64'h1EADBEEFCAFEBABE);
+      #100;
+      $display(">>>[TB] Starting AXI Write SRAM data");
+      i_soc.i_cpu_bfm.axi_write(32'h1000_0010, 64'h2EADBEEFCAFEBABE); 
+      
       
       #100; // Small delay between transactions
 
       // --- Read Phase ---
-      $display(">>>[TB] Starting AXI Read...");
-      i_soc.i_cpu_bfm.axi_read(32'h0000_0010, read_data);
+      $display(">>>[TB] Starting AXI Read SRAM exec...");
+      i_soc.i_cpu_bfm.axi_read(32'h0000_00FF, read_data);
       
       // Verification
-      if (read_data === 64'hDEADBEEFCAFEBABE) begin
+      if (read_data === 64'h1EADBEEFCAFEBABE) begin
          $display(">>>[TB] SUCCESS: Read data matches written data! (%h)", read_data);
       end else begin
-         $display("[TB] ERROR: Data mismatch! Expected DEADBEEFCAFEBABE, Got %h", read_data);
+         $display("[TB] ERROR: Data mismatch! Expected 1EADBEEFCAFEBABE, Got %h", read_data);
       end
 
       #100;
-      $display(">>>[TB] Start read all...");
+      // --- Read Phase ---
+      $display(">>>[TB] Starting AXI Read SRAM data...");
+      i_soc.i_cpu_bfm.axi_read(32'h1000_0010, read_data);
+      
+      // Verification
+      if (read_data === 64'h2EADBEEFCAFEBABE) begin
+         $display(">>>[TB] SUCCESS: Read data matches written data! (%h)", read_data);
+      end else begin
+         $display("[TB] ERROR: Data mismatch! Expected 2EADBEEFCAFEBABE, Got %h", read_data);
+      end
+
+      #100;
+      // $display(">>>[TB] Start read all...");
       // Read the first 128 words (64-bit each) of the SRAM
-      i_soc.i_cpu_bfm.read_all(32'h0000_0000, 8);
+      //i_soc.i_cpu_bfm.read_all(32'h0000_0000, 8);
 
       //////
 
       #1000;
 
       $display(">>>[TB] Starting DS wdma via AXI Bus...");
-      i_soc.i_cpu_bfm.axi_write(32'h0002_0000, 64'h0000_0000_0000_00B8);
-      i_soc.i_cpu_bfm.axi_write(32'h0002_0004, 64'h0000_0000_0000_0020);
-      i_soc.i_cpu_bfm.axi_write(32'h0002_0008, 64'h0000_0000_0000_0001);
+      i_soc.i_cpu_bfm.axi_write(32'h4001_0000, 64'h0000_0000_1000_00B8);
+      i_soc.i_cpu_bfm.axi_write(32'h4001_0004, 64'h0000_0000_0000_0020);
+      i_soc.i_cpu_bfm.axi_write(32'h4001_0008, 64'h0000_0000_0000_0001);
       $display(">>>[TB] End DS wdma configuration.");
 
       /* -----\/----- EXCLUDED -----\/-----
@@ -69,11 +85,11 @@ module soc_tb;
 
       // 1. Write the Source SRAM Base Address to REG_RDMA_ADDR (Offset 0x0)
       // Base (32'h0001_0000) + 0x0 = 32'h0001_0000 | Data = 32'h0000_0010
-      i_soc.i_cpu_bfm.axi_write(32'h0001_0000, 64'h0000_0000_0000_00B8);
+      i_soc.i_cpu_bfm.axi_write(32'h4000_0000, 64'h0000_0000_1000_00B8);
 
       // 2. Write the transfer length (63 bytes) to REG_RDMA_LEN (Offset 0x4)
       // Base (32'h0001_0000) + 0x4 = 32'h0001_0004 | Data = 20'd63 (32'h0000_003F)
-      i_soc.i_cpu_bfm.axi_write(32'h0001_0004, 64'h0000_0000_0000_003F);
+      i_soc.i_cpu_bfm.axi_write(32'h4000_0004, 64'h0000_0000_0000_003F);
 
       // 3. Kick off the DMA by writing 1 to the valid field in REG_RDMA_CTRL (Offset 0x8)
       // Base (32'h0001_0000) + 0x8 = 32'h0001_0008 | Data = Bit [0] = 1'b1
@@ -82,7 +98,7 @@ module soc_tb;
       // hardware internal register logic handles the 1-cycle handshake automatically.
       // It pulses high for exactly 1 cycle when the AXI write transaction completes, 
       // satisfying the Forencich DMA engine command ingestion perfectly.
-      i_soc.i_cpu_bfm.axi_write(32'h0001_0008, 64'h0000_0000_0000_0001);
+      i_soc.i_cpu_bfm.axi_write(32'h4000_0008, 64'h0000_0000_0000_0001);
       //i_soc.i_cpu_bfm.axi_write(32'h0001_0008, 64'h0000_0000_0000_0000);
       /// ***temporary
       // $display("[TB] Bypassing AXI to manually force NPU registers...");
@@ -148,18 +164,18 @@ module soc_tb;
    // --- AXI Side (Bridge Output to Interconnect) ---
    logic				      bridge_axi_rvalid;
    logic [63:0]				      bridge_axi_rdata;
-   assign bridge_axi_rvalid = i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r_valid;
-   assign bridge_axi_rdata  = i_soc.i_ram_slave_0.i_bridge.axi_resp_o.r.data;
+   assign bridge_axi_rvalid = i_soc.i_ram_exec_slave_0.i_bridge.axi_resp_o.r_valid;
+   assign bridge_axi_rdata  = i_soc.i_ram_exec_slave_0.i_bridge.axi_resp_o.r.data;
 
    // --- SRAM Side (Bridge Input from RAM) ---
    logic				      bridge_mem_req;    // Did the bridge ask the RAM for data?
    logic				      bridge_mem_rvalid; // Did the RAM give data back to the bridge?
    logic [63:0]				      bridge_mem_rdata;
-   assign bridge_mem_req    = i_soc.i_ram_slave_0.i_bridge.mem_req_o;
-   assign bridge_mem_rvalid = i_soc.i_ram_slave_0.i_bridge.mem_rvalid_i;
-   assign bridge_mem_rdata  = i_soc.i_ram_slave_0.i_bridge.mem_rdata_i;
+   assign bridge_mem_req    = i_soc.i_ram_exec_slave_0.i_bridge.mem_req_o;
+   assign bridge_mem_rvalid = i_soc.i_ram_exec_slave_0.i_bridge.mem_rvalid_i;
+   assign bridge_mem_rdata  = i_soc.i_ram_exec_slave_0.i_bridge.mem_rdata_i;
 
    // data arriving at the cpu
-   logic [63:0] cpu_view_data;
+   logic [63:0]				      cpu_view_data;
    assign cpu_view_data = i_soc.i_cpu_bfm.ext_mst_resp_i.r.data;
 endmodule

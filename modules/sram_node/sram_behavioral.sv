@@ -28,7 +28,7 @@ module sram_behavioral #(
 
    initial begin
       $readmemh(
-		"/home/mikail/digital-design/interconnect/axi/Edge-MPSoC/modules/sram_node/sram_init.mem",
+		"/home/mikail/digital-design/interconnect/axi/Edge-MPSoC/modules/sram_node/firmware.hex",
 		mem
 		);
    end
