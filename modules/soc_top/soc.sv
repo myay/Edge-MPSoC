@@ -241,7 +241,8 @@ module soc #(
 		    .AddrWidth ( SocAddrWidth ),
 		    .DataWidth ( SocDataWidth ),
 		    .IdWidth   ( 8            ),
-		    .MemDepth  ( 2048         ),
+		    .MemDepth  ( 1024         ),
+		    .InitFile  ( "/home/mikail/digital-design/interconnect/axi/Edge-MPSoC/modules/sram_node/firmware.hex" ),
 		    .axi_req_t ( mst_req_t    ),
 		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_exec_slave_0 (
@@ -293,7 +294,8 @@ module soc #(
 		    .AddrWidth ( SocAddrWidth ),
 		    .DataWidth ( SocDataWidth ),
 		    .IdWidth   ( 8            ),
-		    .MemDepth  ( 2048         ),
+		    .MemDepth  ( 1024         ),
+		    .InitFile  ( "/home/mikail/digital-design/interconnect/axi/Edge-MPSoC/modules/sram_node/sram_init.mem" ), // Leaves memory uninitialized
 		    .axi_req_t ( mst_req_t    ),
 		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_data_slave_3 (
