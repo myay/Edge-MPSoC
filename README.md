@@ -12,17 +12,26 @@ Edge-MPSoC: A RISC-V System-on-Chip (SoC) framework for Edge AI including RTL mo
 
 ## Prerequisites & Setup
 
-Ensure all required dependencies are placed in the correct path under `pulp/axi`:
+Ensure the following tools and toolchains are installed on your system:
 
-1. Copy or link `Edge-MPSoC` inside `pulp/axi/`.
-2. Add `common_cells` repository inside `pulp/axi/`.
+* [Verilator](https://www.veripool.org/verilator/) – Verilog/SystemVerilog simulator
+* [Surfer](https://surfer-project.org/) – Waveform viewer
+* [PeakRDL](https://github.com/SystemRDL/PeakRDL) – SystemRDL toolchain for register generation
+* [RISC-V GCC Toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain) – Cross-compiler toolchain for RISC-V target architectures
 
-For convenience of development, the folder structure should look like this:
+Ensure all required dependencies exist and that `common_cells` is located inside `axi`:
+
+1. Clone `Edge-MPSoC`.
+2. Clone the [axi](https://github.com/pulp-platform/axi) platform repository.
+3. Update `PULP_AXI_PATH` in `run_soc_tb.sh` to reflect the location of `axi/`.
+4. Clone the [common_cells](https://github.com/pulp-platform/common_cells) repository inside `axi/`.
+
+For convenience, structure your directories as follows:
+
 ```text
-pulp/axi/
-├── Edge-MPSoC/
+Edge-MPSoC/
+axi/
 └── common_cells/
-```
 
 ---
 
