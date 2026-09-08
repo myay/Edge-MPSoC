@@ -32,7 +32,7 @@ For convenience, structure your directories as follows:
 Edge-MPSoC/
 axi/
 └── common_cells/
-
+```
 ---
 
 ## Register Map Generation (PeakRDL)
