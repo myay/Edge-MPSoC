@@ -242,7 +242,7 @@ module soc #(
 		    .DataWidth ( SocDataWidth ),
 		    .IdWidth   ( 8            ),
 		    .MemDepth  ( 1024         ),
-		    .InitFile  ( "/home/mikail/digital-design/interconnect/axi/Edge-MPSoC/modules/sram_node/firmware.hex" ),
+		    .InitFile  ( "/home/mikail/digital-design/Edge-MPSoC/app/firmware.hex" ),
 		    .axi_req_t ( mst_req_t    ),
 		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_exec_slave_0 (
@@ -295,7 +295,7 @@ module soc #(
 		    .DataWidth ( SocDataWidth ),
 		    .IdWidth   ( 8            ),
 		    .MemDepth  ( 1024         ),
-		    .InitFile  ( "/home/mikail/digital-design/interconnect/axi/Edge-MPSoC/modules/sram_node/sram_init.mem" ), // Leaves memory uninitialized
+		    .InitFile  ( "/home/mikail/digital-design/Edge-MPSoC/modules/sram_node/sram_init.mem" ), // Leaves memory uninitialized
 		    .axi_req_t ( mst_req_t    ),
 		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_data_slave_3 (
@@ -306,6 +306,85 @@ module soc #(
 					  .busy_o     (                      )
 					  );
 
+   axi_spi_slave #(
+		   .AXI_ADDR_WIDTH (32),
+		   .AXI_DATA_WIDTH (64),
+		   .AXI_USER_WIDTH (6),
+		   .AXI_ID_WIDTH   (3),
+		   .DUMMY_CYCLES   (32)
+		   ) u_axi_spi_slave (
+				      .test_mode             (),
+				      .spi_sclk              (),
+				      .spi_cs                (),
+				      .spi_mode              (),
+				      .spi_sdi0              (),
+				      .spi_sdi1              (),
+				      .spi_sdi2              (),
+				      .spi_sdi3              (),
+				      .spi_sdo0              (),
+				      .spi_sdo1              (),
+				      .spi_sdo2              (),
+				      .spi_sdo3              (),
+
+				      // AXI4 MASTER
+				      .axi_aclk              (),
+				      .axi_aresetn           (),
+				      
+				      // WRITE ADDRESS CHANNEL
+				      .axi_master_aw_valid   (),
+				      .axi_master_aw_addr    (),
+				      .axi_master_aw_prot    (),
+				      .axi_master_aw_region  (),
+				      .axi_master_aw_len     (),
+				      .axi_master_aw_size    (),
+				      .axi_master_aw_burst   (),
+				      .axi_master_aw_lock    (),
+				      .axi_master_aw_cache   (),
+				      .axi_master_aw_qos     (),
+				      .axi_master_aw_id      (),
+				      .axi_master_aw_user    (),
+				      .axi_master_aw_ready   (),
+
+				      // READ ADDRESS CHANNEL
+				      .axi_master_ar_valid   (),
+				      .axi_master_ar_addr    (),
+				      .axi_master_ar_prot    (),
+				      .axi_master_ar_region  (),
+				      .axi_master_ar_len     (),
+				      .axi_master_ar_size    (),
+				      .axi_master_ar_burst   (),
+				      .axi_master_ar_lock    (),
+				      .axi_master_ar_cache   (),
+				      .axi_master_ar_qos     (),
+				      .axi_master_ar_id      (),
+				      .axi_master_ar_user    (),
+				      .axi_master_ar_ready   (),
+
+				      // WRITE DATA CHANNEL
+				      .axi_master_w_valid    (),
+				      .axi_master_w_data     (),
+				      .axi_master_w_strb     (),
+				      .axi_master_w_user     (),
+				      .axi_master_w_last     (),
+				      .axi_master_w_ready    (),
+
+				      // READ DATA CHANNEL
+				      .axi_master_r_valid    (),
+				      .axi_master_r_data     (),
+				      .axi_master_r_resp     (),
+				      .axi_master_r_last     (),
+				      .axi_master_r_id       (),
+				      .axi_master_r_user     (),
+				      .axi_master_r_ready    (),
+
+				      // WRITE RESPONSE CHANNEL
+				      .axi_master_b_valid    (),
+				      .axi_master_b_resp     (),
+				      .axi_master_b_id       (),
+				      .axi_master_b_user     (),
+				      .axi_master_b_ready    ()
+				      );
+   
    // ============================================================================
    // SIMULATION-ONLY DEBUG TRACKER & PROTOCOL CHECKER
    // ============================================================================

@@ -178,7 +178,27 @@ ${PULP_AXI_PATH}/src/axi_from_mem.sv
 ./modules/cpu_bfm/cpu_bfm.sv
 ./modules/picorv32/picorv32.v
 ./modules/picorv32/cpu_picorv32_axi.sv
-      
+
+// spi
+./modules/spi/axi_spi_slave.sv
+./modules/spi/spi_slave_axi_plug.sv
+./modules/spi/spi_slave_cmd_parser.sv
+./modules/spi/spi_slave_controller.sv
+./modules/spi/spi_slave_dc_fifo.sv
+./modules/spi/spi_slave_regs.sv
+./modules/spi/spi_slave_rx.sv
+./modules/spi/spi_slave_syncro.sv
+./modules/spi/spi_slave_tx.sv
+// other spi dependencies
+./modules/spi/deps/pulp_clock_inverter.sv
+./modules/spi/deps/pulp_clock_mux2.sv
+./modules/spi/deps/dc_token_ring_fifo_din.v
+./modules/spi/deps/dc_token_ring_fifo_dout.v
+./modules/spi/deps/dc_token_ring.v
+./modules/spi/deps/dc_synchronizer.v
+./modules/spi/deps/dc_data_buffer.v
+./modules/spi/deps/dc_full_detector.v      
+     
 // soc
 ./modules/soc_top/soc.sv
 ./modules/soc_top/soc_tb.sv
