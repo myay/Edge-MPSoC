@@ -151,13 +151,59 @@ module soc_tb;
    mst_req_t  [0:0] slv_reqs;  // Output from SoC to Memory
    mst_resp_t [0:0] slv_resps; // Input from Memory to SoC
 
+   // =========================================================================
+   // SPI Slave Testbench Signal Declarations
+   // =========================================================================
+   logic				      test_mode;
+   logic				      spi_sclk;
+   logic				      spi_cs;
+   logic [1:0]				      spi_mode;
+   logic				      spi_sdi0;
+   logic				      spi_sdi1;
+   logic				      spi_sdi2;
+   logic				      spi_sdi3;
+   logic				      spi_sdo0;
+   logic				      spi_sdo1;
+   logic				      spi_sdo2;
+   logic				      spi_sdo3;
+   logic				      rst_n_spi;
+				      
+   // Default inactive initialization (place inside an initial block or driver)
+   initial begin
+      test_mode = 1'b0;
+      spi_sclk  = 1'b0;
+      spi_cs    = 1'b1; // Inactive active-low CS
+      spi_mode  = 2'b00;
+      spi_sdi0  = 1'b0;
+      spi_sdi1  = 1'b0;
+      spi_sdi2  = 1'b0;
+      spi_sdi3  = 1'b0;
+      // 2. Hold reset low across multiple clock edges
+      repeat (10) @(posedge clk);
+      rst_n_spi = 1'b1;
+   end
+   
    soc #(
-         .SocAddrWidth ( AXI_ADDR_WIDTH ),
-         .SocDataWidth ( AXI_DATA_WIDTH ),
-         .SocIdWidth   ( AXI_ID_WIDTH   ) 
+	 .SocAddrWidth ( AXI_ADDR_WIDTH ),
+	 .SocDataWidth ( AXI_DATA_WIDTH ),
+	 .SocIdWidth   ( AXI_ID_WIDTH   ) 
 	 ) i_soc (
-		  .clk_i            ( clk    ),
-		  .rst_ni           ( rst_n  )
+		  .clk_i       ( clk       ),
+		  .rst_ni      ( rst_n_spi     ),
+
+		  // External SPI Slave Interface
+		  .test_mode_i ( test_mode ),
+		  .spi_sclk_i  ( spi_sclk  ),
+		  .spi_cs_i    ( spi_cs    ),
+		  .spi_mode_o  ( spi_mode  ),
+		  .spi_sdi0_i  ( spi_sdi0  ),
+		  .spi_sdi1_i  ( spi_sdi1  ),
+		  .spi_sdi2_i  ( spi_sdi2  ),
+		  .spi_sdi3_i  ( spi_sdi3  ),
+		  .spi_sdo0_o  ( spi_sdo0  ),
+		  .spi_sdo1_o  ( spi_sdo1  ),
+		  .spi_sdo2_o  ( spi_sdo2  ),
+		  .spi_sdo3_o  ( spi_sdo3  )
 		  );
 
    // debug wires
