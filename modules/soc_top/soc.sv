@@ -189,8 +189,10 @@ module soc #(
 					.clk        ( clk_i ),
 					.resetn     ( rst_ni ),
 					.cpu_trap   ( /* connect to a top-level pin or monitor */ ),
-					.axi_req_o  ( ),
-					.axi_resp_i ( )
+					.axi_req_o  ( slv_reqs[3] ),
+					.axi_resp_i ( slv_resps[3] )
+					//.axi_req_o  ( ),
+					//.axi_resp_i ( )
 					);
 
    // =========================================================================

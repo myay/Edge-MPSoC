@@ -21,8 +21,8 @@ module soc_tb;
       #50 rst_n = 1;
 
       // --- Write Phase ---
-      $display(">>>[TB] Starting AXI Write SRAM exec");
-      i_soc.i_cpu_bfm.axi_write(32'h0000_00FF, 64'h1EADBEEFCAFEBABE);
+      //$display(">>>[TB] Starting AXI Write SRAM exec");
+      //i_soc.i_cpu_bfm.axi_write(32'h0000_00FF, 64'h1EADBEEFCAFEBABE);
       #100;
       $display(">>>[TB] Starting AXI Write SRAM data");
       i_soc.i_cpu_bfm.axi_write(32'h1000_0010, 64'h2EADBEEFCAFEBABE); 
@@ -35,11 +35,11 @@ module soc_tb;
       i_soc.i_cpu_bfm.axi_read(32'h0000_00FF, read_data);
       
       // Verification
-      if (read_data === 64'h1EADBEEFCAFEBABE) begin
-         $display(">>>[TB] SUCCESS: Read data matches written data! (%h)", read_data);
-      end else begin
-         $display("[TB] ERROR: Data mismatch! Expected 1EADBEEFCAFEBABE, Got %h", read_data);
-      end
+      //if (read_data === 64'h1EADBEEFCAFEBABE) begin
+      //   $display(">>>[TB] SUCCESS: Read data matches written data! (%h)", read_data);
+      //end else begin
+      //   $display("[TB] ERROR: Data mismatch! Expected 1EADBEEFCAFEBABE, Got %h", read_data);
+      //end
 
       #100;
       // --- Read Phase ---

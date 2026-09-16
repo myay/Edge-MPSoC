@@ -77,7 +77,7 @@ Compile `start.s` into a RISC-V ELF binary using `sections.lds`:
 Convert the ELF binary into Verilog Hex format for `$readmemh` memory initialization:
 
 ```bash
-riscv64-unknown-elf-objcopy -O verilog firmware.elf firmware.hex
+riscv64-unknown-elf-objcopy -O verilog --verilog-data-width=8 firmware.elf firmware.hex
 ```
 
 ### 3. Disassemble & Inspect ELF
