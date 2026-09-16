@@ -66,6 +66,11 @@ Compile `start.s` into a RISC-V ELF binary using `sections.lds`:
   ```bash
   riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -ffreestanding -nostartfiles -nostdlib -T sections.lds start.s -o firmware.elf
   ```
+  
+* **Or Compile C file directly to hex:**
+  ```bash
+  riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 -ffreestanding -nostdlib -Wl,-T,sections.lds start.s main.c -o firmware.elf
+  ```
 
 ### 2. Convert to Verilog Hex
 
@@ -103,5 +108,7 @@ TODOs:
 - picorv32 integration test
 - axi_spi_slave integration test
 - cpu (picorv32) bootup test with sanity checks
+- improve c-to-hex flow
 - set up nightly regression
 - FPGA prototyping
+- UART integration and printing output of UART pin in Verilator simulation to a terminal in real time
