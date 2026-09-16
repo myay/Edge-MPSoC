@@ -18,6 +18,7 @@ Ensure the following tools and toolchains are installed on your system:
 * [Surfer](https://surfer-project.org/) – Waveform viewer
 * [PeakRDL](https://github.com/SystemRDL/PeakRDL) – SystemRDL toolchain for register generation
 * [RISC-V GCC Toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain) – Cross-compiler toolchain for RISC-V target architectures
+* [liblz4](https://packages.debian.org/sid/liblz4-dev) Install with ```sudo apt-get install liblz4-dev```
 
 Ensure all required dependencies exist and that `common_cells` is located inside `axi`:
 
@@ -25,6 +26,7 @@ Ensure all required dependencies exist and that `common_cells` is located inside
 2. Clone the [axi](https://github.com/pulp-platform/axi) platform repository.
 3. Update `PULP_AXI_PATH` in `run_soc_tb.sh` to reflect the location of `axi/`.
 4. Clone the [common_cells](https://github.com/pulp-platform/common_cells) repository inside `axi/`.
+5. Update the location of data and exec SRAM init files (.Initfile) in `modules/soc_top/soc.sv` (firmware compilation steps are below and for the data ram init file run `gen_mem.sh 1024` in `modules/sram_node`.
 
 For convenience, structure your directories as follows:
 
@@ -94,3 +96,12 @@ Execute the SoC testbench runner script:
 # Run simulation with waveforms (launches Surfer viewer)
 ./run_soc_tb.sh wf
 ```
+
+---
+
+TODOs:
+- picorv32 integration test
+- axi_spi_slave integration test
+- cpu (picorv32) bootup test with sanity checks
+- set up nightly regression
+- FPGA prototyping
