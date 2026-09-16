@@ -30,6 +30,9 @@ module cpu_picorv32_axi #(
    logic				  pico_rvalid;
    logic				  pico_rready;
 
+   axi_lite_req_t                lite_req;
+   axi_lite_resp_t               lite_resp;
+   
    // 1. Instantiate the Bare-Metal PicoRV32 Core
    picorv32_axi #(
 		  .PROGADDR_RESET(32'h0000_0000), 
@@ -48,9 +51,6 @@ module cpu_picorv32_axi #(
 				);
 
    // 2. Pack pins into PULP AXI4-Lite Structs
-   axi_lite_req_t  lite_req;
-   axi_lite_resp_t lite_resp;
-
    always_comb begin
       lite_req = '0; 
       lite_req.aw_valid = pico_awvalid;
@@ -62,6 +62,20 @@ module cpu_picorv32_axi #(
       lite_req.ar_valid = pico_arvalid;
       lite_req.ar.addr  = pico_araddr;
       lite_req.r_ready  = pico_rready;
+
+      // WRITE PATH: Steer WDATA and WSTRB based on address bit 2
+      if (AxiDataWidth == 64) begin
+	 if (pico_awaddr[2]) begin
+            lite_req.w.data = {pico_wdata, 32'b0};
+            lite_req.w.strb = {pico_wstrb, 4'b0};
+	 end else begin
+            lite_req.w.data = {32'b0, pico_wdata};
+            lite_req.w.strb = {4'b0, pico_wstrb};
+	 end
+      end else begin
+	 lite_req.w.data = pico_wdata;
+	 lite_req.w.strb = pico_wstrb;
+      end
    end
 
    assign pico_awready = lite_resp.aw_ready;
@@ -69,7 +83,19 @@ module cpu_picorv32_axi #(
    assign pico_bvalid  = lite_resp.b_valid;
    assign pico_arready = lite_resp.ar_ready;
    assign pico_rvalid  = lite_resp.r_valid;
-   assign pico_rdata   = lite_resp.r.data;
+   
+   // READ PATH: Multiplex RDATA based on address bit 2
+   always_comb begin
+      if (AxiDataWidth == 64) begin
+         if (pico_araddr[2]) begin
+            pico_rdata = lite_resp.r.data[63:32];
+         end else begin
+            pico_rdata = lite_resp.r.data[31:0];
+         end
+      end else begin
+         pico_rdata = lite_resp.r.data;
+      end
+   end
 
    // 3. Protocol Converter
    axi_lite_to_axi #(
