@@ -141,7 +141,7 @@ module cpu_bfm (
       req.ar.burst = 2'b01;
 
       $display("[%0t] [BFM] READ LAUNCH | Addr: 0x%h", $time, addr);
-
+      req.ar_valid <= 1'b1;
       // 1. Initiate Address phase
       @(negedge clk_i);
       req.ar_valid <= 1'b1;

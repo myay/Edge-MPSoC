@@ -360,7 +360,7 @@ module data_sampler #(
 		     ) i_config_axi_to_lite (
 					     .clk_i      ( clk_i   ),
 					     .rst_ni     ( rst_ni  ),
-					     .test_i     ( 1'b0    ),
+//					     .test_i     ( 1'b0    ),
 
 					     .slv_req_i  ( slv_req_i  ),
 					     .slv_resp_o ( slv_resp_o ),

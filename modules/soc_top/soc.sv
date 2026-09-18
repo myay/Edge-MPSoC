@@ -246,9 +246,9 @@ module soc #(
 	      .rule_t         ( my_xbar_rule_t ),
 	      .Connectivity   ( XbarConnectivity )
 	      ) i_xbar (
-			.clk_i                 ( clk_i ),
-			.rst_ni                ( rst_ni ),
-			.test_i                ( 1'b0 ),
+			.clk_i                  ( clk_i             ),
+			.rst_ni                 ( rst_ni            ),
+//			.test_i                 ( 1'b0              ),
 
 			.slv_ports_req_i       ( xbar_slv_reqs_q ),
 			.slv_ports_resp_o      ( xbar_slv_resps ),
@@ -270,11 +270,11 @@ module soc #(
    axi_ram_module #(
 		    .AddrWidth ( SocAddrWidth ),
 		    .DataWidth ( SocDataWidth ),
-		    .IdWidth   ( 8 ),
-		    .MemDepth  ( 1024 ),
-		    .InitFile  ( "/home/mikail/digital-design/Edge-MPSoC/app/firmware.hex" ),
-		    .axi_req_t ( mst_req_t ),
-		    .axi_resp_t( mst_resp_t )
+		    .IdWidth   ( 8            ),
+		    .MemDepth  ( 1024         ),
+		    .InitFile  ( "/home/dao-nguyen/Desktop/thesis_SoC/Edge-MPSoC/app/firmware.hex" ),
+		    .axi_req_t ( mst_req_t    ),
+		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_exec_slave_0 (
 					  .clk_i      ( clk_i ),
 					  .rst_ni     ( rst_ni ),
@@ -323,11 +323,11 @@ module soc #(
    axi_ram_module #(
 		    .AddrWidth ( SocAddrWidth ),
 		    .DataWidth ( SocDataWidth ),
-		    .IdWidth   ( 8 ),
-		    .MemDepth  ( 1024 ),
-		    .InitFile  ( "/home/mikail/digital-design/Edge-MPSoC/modules/sram_node/sram_init.mem" ),
-		    .axi_req_t ( mst_req_t ),
-		    .axi_resp_t( mst_resp_t )
+		    .IdWidth   ( 8            ),
+		    .MemDepth  ( 1024         ),
+		    .InitFile  ( "/home/dao-nguyen/Desktop/thesis_SoC/Edge-MPSoC/modules/sram_node/sram_init.mem" ), // Leaves memory uninitialized
+		    .axi_req_t ( mst_req_t    ),
+		    .axi_resp_t( mst_resp_t   )
 		    ) i_ram_data_slave_3 (
 					  .clk_i      ( clk_i ),
 					  .rst_ni     ( rst_ni ),

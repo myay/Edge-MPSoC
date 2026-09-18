@@ -4,7 +4,8 @@ rm -rf obj_dir
 
 # Set PULP_AXI_PATH if not already set in the environment
 #export PULP_AXI_PATH="${PULP_AXI_PATH:-$(cd .. && pwd)}"
-export PULP_AXI_PATH="/home/mikail/digital-design/interconnect/axi"
+#export PULP_AXI_PATH="/home/mikail/digital-design/interconnect/axi"
+export PULP_AXI_PATH="/home/dao-nguyen/Desktop/thesis_SoC/axi"
 
 tb_top_name=soc_tb
 filelist=sources.f

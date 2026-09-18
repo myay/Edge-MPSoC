@@ -1,0 +1,16 @@
+# Build output
+obj_dir/
+modules/data_sampler_wrapper/regs/docs/
+
+# Verilator
+obj_dir/
+Verilator_*
+*.vcd
+*.fst
+
+# Compiled files
+*.elf
+*.hex
+
+# Additional files to ignore
+surfer
