@@ -14,7 +14,7 @@ module soc_tb;
 
    logic [63:0]	read_data; // Variable to store the result
    logic [63:0]	read_data_1; // Variable to store the result
-   logic [63:0]	testData; // Check data at address 1000_0000
+   //logic [63:0]	testData; // Check data at address 1000_0000
 
    initial begin
       $dumpfile("dump.fst");
@@ -26,7 +26,7 @@ module soc_tb;
       //$display(">>>[TB] Starting AXI Write SRAM exec");
       //i_soc.i_cpu_bfm.axi_write(32'h0000_00FF, 64'h1EADBEEFCAFEBABE);
       #100;
-*/
+
 /*
       $display(">>>[TB] Starting AXI Write SRAM data");
       i_soc.i_cpu_bfm.axi_write(32'h1000_0010, 64'h2EADBEEFCAFEBABE); 
@@ -48,10 +48,10 @@ module soc_tb;
       #100;
       // --- Read Phase ---
       $display(">>>[TB] Starting AXI Read SRAM data...");
-      i_soc.i_cpu_bfm.axi_read(32'h1000_0000, testData);
+      //i_soc.i_cpu_bfm.axi_read(32'h1000_0000, testData);
       i_soc.i_cpu_bfm.axi_read(32'h1000_0010, read_data);
       i_soc.i_cpu_bfm.axi_read(32'h1000_0014, read_data_1);
-      $display(">>>[TB] SUCCESS: Data at Address 1000_0000 (%h)", testData);
+      //$display(">>>[TB] SUCCESS: Data at Address 1000_0000 (%h)", testData);
       // Verification
       if (read_data === read_data_1) begin
          $display(">>>[TB] SUCCESS: Read and write communication bw CPU and SRAM sucessfully! (%h)", read_data);
