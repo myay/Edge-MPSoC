@@ -23,10 +23,10 @@ Ensure the following tools and toolchains are installed on your system:
 Ensure all required dependencies exist and that `common_cells` is located inside `axi`:
 
 1. Clone `Edge-MPSoC`.
-2. Clone the [axi](https://github.com/pulp-platform/axi) platform repository.
+2. Clone the [axi](https://github.com/pulp-platform/axi) platform repository, commit [808e7b3](https://github.com/pulp-platform/axi/commit/808e7b326f9f259bd2831847d9362291500db641).
 3. Update `PULP_AXI_PATH` in `run_soc_tb.sh` to reflect the location of `axi/`.
-4. Clone the [common_cells](https://github.com/pulp-platform/common_cells) repository inside `axi/`.
-5. Update the location of data and exec SRAM init files (.Initfile) in `modules/soc_top/soc.sv` (firmware compilation steps are below and for the data ram init file run `gen_mem.sh 1024` in `modules/sram_node`.
+4. Clone the [common_cells](https://github.com/pulp-platform/common_cells) repository inside `axi/`, commit [177f07a](https://github.com/pulp-platform/common_cells/commit/177f07a435481855c118833927e63f186fa257ed).
+5. Update the location of data and exec SRAM init files (.Initfile) in `modules/soc_top/soc.sv` (firmware compilation steps are below) and for the data ram init file run `gen_mem.sh 1024` in `modules/sram_node`.
 
 For convenience, structure your directories as follows:
 
