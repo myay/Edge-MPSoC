@@ -1,5 +1,7 @@
 // To send data over the AXI crossbar, you use Memory-Mapped I/O (MMIO). You define a pointer to the specific memory address your target peripheral is mapped to on the AXI bus. Using the volatile keyword tells the C compiler that the value at this address can change outside the program's flow, preventing the compiler from optimizing away your memory accesses.
 
+#include <stdio.h>
+#include "dataTransferTest.c"
 // Memory-mapped address of AXI peripheral
 #define AXI_TARGET_ADDR 0x10000000 
 
@@ -15,10 +17,13 @@ int main(void) {
     // The CPU will translate this into an AXI read transaction (AR/R channels).
     volatile unsigned int read_data = *axi_bus;
 
+    unsigned int testReadWrite = test_dataSRAM_transfer();
+    printf("Test result: %s\n", (testReadWrite == 0) ? "Success" : "Failure");
     // 4. Trap the CPU in an infinite loop
+    /*
     while (1) {
         // Halt
     }
-
+    */
     return 0;
 }

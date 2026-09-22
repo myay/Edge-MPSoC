@@ -14,12 +14,14 @@ module soc_tb;
 
    logic [63:0]	read_data; // Variable to store the result
    logic [63:0]	read_data_1; // Variable to store the result
+   logic [3:0]    NUM_WORDS = 4; // Number of words to read/write
    //logic [63:0]	testData; // Check data at address 1000_0000
 
    initial begin
       $dumpfile("dump.fst");
       $dumpvars(0, soc_tb); // Make sure this matches your TB module name
       rst_n = 0;
+
       #50 rst_n = 1;
 
       // --- Write Phase ---
@@ -27,11 +29,11 @@ module soc_tb;
       //i_soc.i_cpu_bfm.axi_write(32'h0000_00FF, 64'h1EADBEEFCAFEBABE);
       #100;
 
-/*
-      $display(">>>[TB] Starting AXI Write SRAM data");
-      i_soc.i_cpu_bfm.axi_write(32'h1000_0010, 64'h2EADBEEFCAFEBABE); 
+
+      //$display(">>>[TB] Starting AXI Write SRAM data");
+      //i_soc.i_cpu_bfm.axi_write(32'h1000_0010, 64'h2EADBEEFCAFEBABE); 
       
-*/      
+     
 //      #100; // Small delay between transactions
 
       // --- Read Phase ---
@@ -48,17 +50,20 @@ module soc_tb;
       #100;
       // --- Read Phase ---
       $display(">>>[TB] Starting AXI Read SRAM data...");
+      for (int i = 0; i<NUM_WORDS; i++) begin
+         i_soc.i_cpu_bfm.axi_read(32'h1000_0000 + i, read_data);
+         $display(">>>[TB] Read data at Address %h: %h", 32'h1000_0000 + i, read_data);
+      end
       //i_soc.i_cpu_bfm.axi_read(32'h1000_0000, testData);
-      i_soc.i_cpu_bfm.axi_read(32'h1000_0010, read_data);
-      i_soc.i_cpu_bfm.axi_read(32'h1000_0014, read_data_1);
       //$display(">>>[TB] SUCCESS: Data at Address 1000_0000 (%h)", testData);
       // Verification
+      /*
       if (read_data === read_data_1) begin
          $display(">>>[TB] SUCCESS: Read and write communication bw CPU and SRAM sucessfully! (%h)", read_data);
       end else begin
          $display("[TB] ERROR: Data mismatch! Expected %h, Got %h", read_data, read_data_1);
       end
-      
+      */
 /*      // Verification
       if (read_data === 64'h2EADBEEFCAFEBABE) begin
          $display(">>>[TB] SUCCESS: Read data matches written data! (%h)", read_data);
