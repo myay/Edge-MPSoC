@@ -14,7 +14,7 @@ Edge-MPSoC: A RISC-V System-on-Chip (SoC) framework for Edge AI including RTL mo
 
 Ensure the following tools and toolchains are installed on your system:
 
-* [Verilator](https://www.veripool.org/verilator/) – Verilog/SystemVerilog simulator
+* [Verilator](https://www.veripool.org/verilator/) – Verilog/SystemVerilog simulator (v5.020 or v5.026 have been confirmed to work with this repo)
 * [Surfer](https://surfer-project.org/) – Waveform viewer
 * [PeakRDL](https://github.com/SystemRDL/PeakRDL) – SystemRDL toolchain for register generation
 * [RISC-V GCC Toolchain](https://github.com/riscv-collab/riscv-gnu-toolchain) – Cross-compiler toolchain for RISC-V target architectures
