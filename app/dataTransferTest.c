@@ -1,8 +1,14 @@
-#include <stdio.h>
 
+#include <stdint.h>
 // Define the memory-mapped address (based address) of the data SRAM
 #define DATA_SRAM_ADDR 0x10000000
-#define SRAM_WORDS 4  // Number of words to test in SRAM
+// Define address storing status
+#define STATUS_ADDR 0x1000ff10
+// Number of words to test in SRAM
+#define SRAM_WORDS 4
+// Define PASS and FAIL values
+#define PASS 0x00000001
+#define FAIL 0x00000000
 /*
  * ================================================================================
  * Function: test_dataSRAM_transfer
@@ -11,30 +17,27 @@
  * If the values match, it indicates that the data transfer is successful; otherwise, it indicates a failure.
  * ================================================================================
 */
-int test_dataSRAM_transfer(void) {
+void test_dataSRAM_transfer(void) {
 
     // Create a volatile pointer to the SRAM address
-    volatile unsigned int *sram_ptr = (volatile unsigned int *)DATA_SRAM_ADDR;
-
+    volatile uint64_t *sram_ptr = (volatile uint64_t *)DATA_SRAM_ADDR;
+    volatile uint64_t *status_ptr = (volatile uint64_t *)STATUS_ADDR;
+    
     // Create a list of initial values to write to SRAM
-    unsigned int init_values[SRAM_WORDS] = {0xDEADBEEF, 0xCAFEBABE, 0x12345678, 0x87654321};
-
-    // Write the initial values to SRAM
+    uint64_t init_values[SRAM_WORDS] = {0xDEADBEEF, 0xCAFEBABE12345678, 0x12345678, 0x87654321};
     for (int i = 0; i < SRAM_WORDS; i++) {
-        sram_ptr[i] = init_values[i];
+        *(sram_ptr + i) = init_values[i];
     }
 
     // Read back the value from SRAM
-    for (int i =0; i < SRAM_WORDS; i++) {
-        unsigned int read_value = sram_ptr[i];
+    for (int i = 0; i < SRAM_WORDS; i++) {
+        uint64_t read_value = *(sram_ptr + i);
         // Compare the read value with the known value
         if (read_value == init_values[i]) {
-            printf("Data transfer successful for word %d: 0x%X\n", i, read_value);
+            *status_ptr = PASS; // Indicate success
         } else {
-            printf("Data transfer failed for word %d: expected 0x%X, got 0x%X\n", i, init_values[i], read_value);
-            return -1; // Failure
+            *status_ptr = FAIL + (DATA_SRAM_ADDR + i); // Indicate failure at specific address
+            break; // Exit the loop on first failure
         }
     }
-
-    return 0; // Success
 }

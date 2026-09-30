@@ -14,7 +14,10 @@ module soc_tb;
 
    logic [63:0]	read_data; // Variable to store the result
    logic [63:0]	read_data_1; // Variable to store the result
+   logic [63:0]	read_data_2; // Variable to store the result
+   logic [63:0]	read_data_3; // Variable to store the result
    logic [3:0]    NUM_WORDS = 4; // Number of words to read/write
+   logic [63:0]   status; // Variable to store the status of the test
    //logic [63:0]	testData; // Check data at address 1000_0000
 
    initial begin
@@ -34,7 +37,7 @@ module soc_tb;
       //i_soc.i_cpu_bfm.axi_write(32'h1000_0010, 64'h2EADBEEFCAFEBABE); 
       
      
-//      #100; // Small delay between transactions
+      #100; // Small delay between transactions
 
       // --- Read Phase ---
 /*      $display(">>>[TB] Starting AXI Read SRAM exec...");
@@ -47,30 +50,53 @@ module soc_tb;
          $display("[TB] ERROR: Data mismatch! Expected 1EADBEEFCAFEBABE, Got %h", read_data);
       end
 */
-      #100;
+      #6500;
       // --- Read Phase ---
       $display(">>>[TB] Starting AXI Read SRAM data...");
-      for (int i = 0; i<NUM_WORDS; i++) begin
-         i_soc.i_cpu_bfm.axi_read(32'h1000_0000 + i, read_data);
-         $display(">>>[TB] Read data at Address %h: %h", 32'h1000_0000 + i, read_data);
+      i_soc.i_cpu_bfm.axi_read(32'h1000_0000, read_data);
+      i_soc.i_cpu_bfm.axi_read(32'h1000_0008, read_data_1);
+      i_soc.i_cpu_bfm.axi_read(32'h1000_0010, read_data_2);
+      i_soc.i_cpu_bfm.axi_read(32'h1000_0018, read_data_3);
+      $display(">>>[TB] Read data at Address %h: %h", 32'h1000_0000, read_data);
+      $display(">>>[TB] Read data at Address %h: %h", 32'h1000_0008, read_data_1);
+      $display(">>>[TB] Read data at Address %h: %h", 32'h1000_0010, read_data_2);
+      $display(">>>[TB] Read data at Address %h: %h", 32'h1000_0018, read_data_3);
+      // Add asertions to check if the written data matches the expected value (4 first words from dataSRAM)
+      data_check1: assert(read_data == 64'hDEADBEEF) begin 
+         $display(">>>[TB] SUCCESS: Read data matches expected value! (%h)", read_data);
+      end else begin
+         $error("[TB] ERROR: Data mismatch! Expected DEADBEEF, Got %h", read_data);
       end
-      //i_soc.i_cpu_bfm.axi_read(32'h1000_0000, testData);
-      //$display(">>>[TB] SUCCESS: Data at Address 1000_0000 (%h)", testData);
+
+      data_check2: assert(read_data_1 == 64'hCAFEBABE12345678) begin 
+         $display(">>>[TB] SUCCESS: Read data matches expected value! (%h)", read_data_1);
+      end else begin
+         $error("[TB] ERROR: Data mismatch! Expected CAFEBABE12345678, Got %h", read_data_1);
+      end
+
+      data_check3: assert(read_data_2 == 64'h12345678) begin 
+         $display(">>>[TB] SUCCESS: Read data matches expected value! (%h)", read_data_2);
+      end else begin
+         $error("[TB] ERROR: Data mismatch! Expected 12345678, Got %h", read_data_2);
+      end
+
+      data_check4: assert(read_data_3 == 64'h87654321) begin 
+         $display(">>>[TB] SUCCESS: Read data matches expected value! (%h)", read_data_3);
+      end else begin
+         $error("[TB] ERROR: Data mismatch! Expected 87654321, Got %h", read_data_3);
+      end
+
+      #2000;
+      i_soc.i_cpu_bfm.axi_read(32'h1000_FF10, status);
+      $display(">>>[TB] STATUS AT ADDRESS %h: %h", 32'h1000_FF10, status);
+
+      // Add assertion to check if the status is 0x1 (indicating reading is complete successfully)
+      status_check: assert(status == 64'h00000001) begin
+         $display(">>>[TB] SUCCESS: Read operation completed successfully! (%h)", status);
+      end else begin
+         $error("[TB] ERROR: Read operation failed! Expected 0x1, Got %h", status);
+      end
       // Verification
-      /*
-      if (read_data === read_data_1) begin
-         $display(">>>[TB] SUCCESS: Read and write communication bw CPU and SRAM sucessfully! (%h)", read_data);
-      end else begin
-         $display("[TB] ERROR: Data mismatch! Expected %h, Got %h", read_data, read_data_1);
-      end
-      */
-/*      // Verification
-      if (read_data === 64'h2EADBEEFCAFEBABE) begin
-         $display(">>>[TB] SUCCESS: Read data matches written data! (%h)", read_data);
-      end else begin
-         $display("[TB] ERROR: Data mismatch! Expected 2EADBEEFCAFEBABE, Got %h", read_data);
-      end
-*/
       #100;
       // $display(">>>[TB] Start read all...");
       // Read the first 128 words (64-bit each) of the SRAM
