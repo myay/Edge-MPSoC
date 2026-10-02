@@ -1,6 +1,7 @@
 // pulp-specific includes
 +incdir+${PULP_AXI_PATH}/src
 +incdir+${PULP_AXI_PATH}/include
++incdir+${PULP_AXI_PATH}/common_cells_repo/include
 // this repo
 +incdir+./include
 

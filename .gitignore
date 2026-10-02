@@ -1,0 +1,29 @@
+# Vivado build artifacts and logs
+*.log
+*.jou
+*.str
+*.pb
+.Xil/
+.Xil*
+
+# Generated project files (recreate via Tcl instead)
+*.xpr
+*.ioplanning/
+*.hw/
+*.sim/
+*.runs/
+*.cache/
+*.gen/
+*.ip_user_files/
+
+# Standalone checkpoints and outputs
+*.dcp
+*.bit
+*.bin
+*.rpt
+
+# Output directories
+build/
+work/
+*.build/
+*.work/
