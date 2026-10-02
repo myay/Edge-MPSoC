@@ -146,26 +146,26 @@ module soc #(
    typedef axi_pkg::xbar_rule_32_t my_xbar_rule_t;
 
    localparam			 my_xbar_rule_t [3:0] xbar_addr_map = '{
-									3: '{
-									     idx:        32'd3, // Data/DMA SRAM
-									     start_addr: 32'h10000000,
-									     end_addr:   32'h1000FFFF // 64KB Data SRAM
-									     },
-									2: '{
-									     idx:        32'd2, // Data Sampler Config (Peripheral MMIO)
-									     start_addr: 32'h40010000,
-									     end_addr:   32'h4001FFFF
-									     },
-									1: '{
-									     idx:        32'd1, // NPU Config (Peripheral MMIO)
-									     start_addr: 32'h40000000,
-									     end_addr:   32'h4000FFFF
-									     },
-									0: '{
-									     idx:        32'd0, // Executable SRAM (Boot Space)
-									     start_addr: 32'h00000000,
-									     end_addr:   32'h0000FFFF // 64KB Exec SRAM
-									     }
+									'{
+									  idx:        32'd3, // Data/DMA SRAM
+									  start_addr: 32'h10000000,
+									  end_addr:   32'h1000FFFF // 64KB Data SRAM
+									  },
+									'{
+									  idx:        32'd2, // Data Sampler Config (Peripheral MMIO)
+									  start_addr: 32'h40010000,
+									  end_addr:   32'h4001FFFF
+									  },
+									'{
+									  idx:        32'd1, // NPU Config (Peripheral MMIO)
+									  start_addr: 32'h40000000,
+									  end_addr:   32'h4000FFFF
+									  },
+									'{
+									  idx:        32'd0, // Executable SRAM (Boot Space)
+									  start_addr: 32'h00000000,
+									  end_addr:   32'h0000FFFF // 64KB Exec SRAM
+									  }
 									};
 
    // =========================================================================
@@ -423,6 +423,8 @@ module soc #(
    // SIMULATION-ONLY DEBUG TRACKER & PROTOCOL CHECKER
    // ============================================================================
 
+`ifndef SYNTHESIS
+   
    initial begin
       $display("\n[SOC_Interconnect_Engine] Ordered Tracking & Protocol Compliance Active.");
    end
@@ -569,7 +571,6 @@ module soc #(
    // SIMULATION 'X' POISONING DETECTOR
    // ============================================================================
    // synopsys translate_off
-`ifndef SYNTHESIS
    always_ff @(posedge clk_i) begin
       if (rst_ni) begin
 	 if ($isunknown(ram_exec_isolated_resp.aw_ready))
@@ -603,14 +604,12 @@ module soc #(
 	   $error("[FATAL X-DETECT] Crossbar -> SPI Slave W_READY is undefined ('X')");
       end
    end
-`endif
    // synopsys translate_on
 
    // ============================================================================
    // AXI STALL TRACER
    // ============================================================================
    // synopsys translate_off
-`ifndef SYNTHESIS
    always @(posedge clk_i) begin
       // Monitor SPI Slave (Port 4)
       if (slv_reqs[4].aw_valid && !slv_resps[4].aw_ready) begin
@@ -621,7 +620,8 @@ module soc #(
 	 $display(" -> Route to RAM_DATA : AW_VALID=%b | AW_READY=%b", mst_reqs[3].aw_valid, mst_resps[3].aw_ready);
       end
    end
-`endif
    // synopsys translate_on
+
+`endif
 
 endmodule

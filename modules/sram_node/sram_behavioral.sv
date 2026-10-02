@@ -1,20 +1,20 @@
 module sram_behavioral #(
-                         parameter int unsigned	DataWidth = 64,
-                         parameter int unsigned	MemDepth = 1024,
-                         parameter int unsigned	AddrWidth = $clog2(MemDepth),
-                         parameter string	InitFile = "" // Default to empty (no load)
+                          parameter int unsigned DataWidth = 64,
+                          parameter int unsigned MemDepth = 1024,
+                          parameter int unsigned AddrWidth = $clog2(MemDepth),
+                          parameter InitFile = "" // Default to empty (no load)
                          )(
-                           input logic			 clk_i,
-                           input logic			 rst_ni,
+                            input logic			  clk_i,
+                            input logic			  rst_ni,
 
-                           input logic			 req_i,
-                           input logic			 we_i,
-                           input logic [AddrWidth-1:0]	 addr_i,
-                           input logic [DataWidth-1:0]	 wdata_i,
-                           input logic [DataWidth/8-1:0] be_i,
+                            input logic			  req_i,
+                            input logic			  we_i,
+                            input logic [AddrWidth-1:0]	  addr_i,
+                            input logic [DataWidth-1:0]	  wdata_i,
+                            input logic [DataWidth/8-1:0] be_i,
 
-                           output logic			 rvalid_o,
-                           output logic [DataWidth-1:0]	 rdata_o
+                            output logic		 rvalid_o,
+                            output logic [DataWidth-1:0] rdata_o
                            );
 
    // =========================================================================

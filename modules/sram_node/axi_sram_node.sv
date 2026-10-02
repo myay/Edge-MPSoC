@@ -1,21 +1,21 @@
 `include "axi/typedef.svh"
 
 module axi_ram_module #(
-                        parameter int unsigned AddrWidth = 32,
-                        parameter int unsigned DataWidth = 64,
-                        parameter int unsigned IdWidth = 8,
-                        parameter int unsigned MemDepth = 1024,
-                        parameter string       InitFile = "", // <-- Add parameter here
-                        parameter	       type axi_req_t = logic,
-                        parameter	       type axi_resp_t = logic
+                         parameter int unsigned	AddrWidth = 32,
+                         parameter int unsigned	DataWidth = 64,
+                         parameter int unsigned	IdWidth = 8,
+                         parameter int unsigned	MemDepth = 1024,
+                         parameter	InitFile = "", // <-- Add parameter here
+                         parameter type	axi_req_t = logic,
+                         parameter type	axi_resp_t = logic
                         ) (
-                           input logic	clk_i,
-                           input logic	rst_ni,
+                            input logic	 clk_i,
+                            input logic	 rst_ni,
                            // AXI Slave Interface
-                           input	axi_req_t axi_req_i,
-                           output	axi_resp_t axi_resp_o,
+                            input	 axi_req_t axi_req_i,
+                            output	 axi_resp_t axi_resp_o,
                            // Status
-                           output logic	busy_o
+                            output logic busy_o
                            );
 
    // ---------------------------

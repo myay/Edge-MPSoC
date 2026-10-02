@@ -20,7 +20,7 @@ source "$repo_root/fpga/common/utils.tcl"
 
 # Project settings
 set proj_name   "test_project"
-set top_module  "soc.sv"
+set top_module  "soc"
 set target_part "xc7a35tcsg324-1"
 
 # Output directories (grouped inside boards/test/build/)
@@ -67,6 +67,9 @@ if {[get_property PROGRESS [get_runs synth_1]] != "100%"} {
 open_run synth_1
 write_checkpoint -force $output_dir/post_synth.dcp
 report_utilization -file $output_dir/post_synth_util.txt
+show_schematic [get_cells]
+#write_schematic -format pdf -force "$output_dir/synth_schematic.pdf"
+report_utilization -hierarchical -file $output_dir/hierarchy_breakdown.txt
 
 # Run Implementation (Optimize, Place, Route)
 puts "--- STARTING IMPLEMENTATION ---"
@@ -84,6 +87,9 @@ write_checkpoint -force $output_dir/post_route.dcp
 report_timing_summary -file $output_dir/post_route_timing_summary.txt
 report_utilization -file $output_dir/post_route_util.txt
 report_power -file $output_dir/post_route_power.txt
+show_schematic [get_cells]
+#write_schematic -format pdf -force "$output_dir/impl_schematic.pdf"
+report_utilization -hierarchical -file $output_dir/hierarchy_breakdown.txt
 
 puts "--- VIVADO FLOW COMPLETED SUCCESSFULLY ---"
 exit
