@@ -40,30 +40,30 @@ module sram_behavioral #(
    // SRAM MODEL
    // =========================================================================
 
+   // Keep asynchronous reset only for control signals
    always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) begin
          rvalid_o <= 1'b0;
-         rdata_o  <= '0;
+      end else begin
+         rvalid_o <= req_i; // rvalid goes high 1 cycle after a request
       end
-      else begin
-         rvalid_o <= 1'b0;
+   end
 
-         if (req_i) begin
-            rvalid_o <= 1'b1;
-
-            // WRITE
-            if (we_i) begin
-               for (int i = 0; i < DataWidth/8; i++) begin
-                  if (be_i[i]) begin
-                     mem[addr_i][8*i +: 8] <= wdata_i[8*i +: 8];
-                  end
+   // Only update memory at a clock edge
+   always_ff @(posedge clk_i) begin
+      if (req_i) begin
+         // WRITE
+         if (we_i) begin
+            for (int i = 0; i < DataWidth/8; i++) begin
+               if (be_i[i]) begin
+                  mem[addr_i][8*i +: 8] <= wdata_i[8*i +: 8];
                end
             end
-            
-            // READ
-            else begin
-               rdata_o <= mem[addr_i];
-            end
+         end
+         
+         // READ
+         else begin
+            rdata_o <= mem[addr_i];
          end
       end
    end

@@ -1,1 +1,1 @@
-create_clock -period 10.000 -name sys_clk [get_ports clk_i]
+create_clock -period 15.000 -name sys_clk [get_ports clk_i]

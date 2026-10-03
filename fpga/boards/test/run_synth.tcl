@@ -21,7 +21,8 @@ source "$repo_root/fpga/common/utils.tcl"
 # Project settings
 set proj_name   "test_project"
 set top_module  "soc"
-set target_part "xc7a35tcsg324-1"
+#set target_part "xc7a35tcsg324-1"
+set target_part "xczu9eg-ffvb1156-2-e"
 
 # Output directories (grouped inside boards/test/build/)
 set build_dir   "$script_dir/build"
@@ -45,6 +46,27 @@ create_project -force $proj_name $proj_dir -part $target_part
 
 # Import sources via common helper
 import_filelist "$repo_root/sources.f"
+
+# =============================================================================
+# PRINT AND SAVE RESOLVED VIVADO FILELIST
+# =============================================================================
+set filelist_out "$output_dir/resolved_filelist.f"
+set fp [open $filelist_out w]
+
+puts "\n=================== VIVADO RESOLVED FILES ==================="
+
+foreach file [get_files -of_objects [get_filesets sources_1]] {
+    # 1. Print to console / terminal
+    puts "  $file"
+    
+    # 2. Write to disk
+    puts $fp $file
+}
+
+close $fp
+
+puts "============================================================="
+puts "Filelist saved to: $filelist_out\n"
 
 # Import constraints
 read_xdc "$script_dir/constraints/constraints.xdc"
