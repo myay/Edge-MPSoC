@@ -5,6 +5,15 @@
 // this repo
 +incdir+./include
 
+// uvm
++incdir+$UVM_HOME
++incdir+verification/uvm/
++incdir+verification/uvm/env
++incdir+verification/uvm/tests
++incdir+$UVM_HOME/src
+${UVM_HOME}/src/uvm_pkg.sv
+${UVM_HOME}/src/dpi/uvm_dpi.cc
+      
  // pulp/axi stuff
 ${PULP_AXI_PATH}/src/axi_pkg.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/cf_math_pkg.sv
@@ -203,3 +212,7 @@ ${PULP_AXI_PATH}/src/axi_from_mem.sv
 // soc
 ./modules/soc_top/soc.sv
 ./modules/soc_top/soc_tb.sv
+
+// uvm
+verification/uvm/tests/test_pkg.sv
+verification/uvm/soc_uvm_tb.sv
