@@ -1,5 +1,5 @@
 `timescale 1ns/1ps // unit of time for delay / time precision (resolution of the smallest step the sim takes)
-`include "../include/axi/typedef.svh"
+//`include "../include/axi/typedef.svh"
 
 module soc_tb;
 
