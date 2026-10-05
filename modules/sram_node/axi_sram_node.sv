@@ -34,7 +34,7 @@ module axi_ram_module #(
    // Initialize signals to prevent X propagation at startup
    initial begin
       mem_req    = 1'b0;
-      mem_gnt    = 1'b1; // Keeping your grant tied high
+      //mem_gnt    = 1'b1; // Keeping your grant tied high
       mem_addr   = '0;
       mem_wdata  = '0;
       mem_strb   = '0;

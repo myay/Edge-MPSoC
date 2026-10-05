@@ -2,7 +2,7 @@
 import uvm_pkg::*;
 import test_pkg::*; // Import package containing tests and environment
 
-module tb_top;
+module soc_uvm_tb;
    bit clk;
    bit rst_n;
 

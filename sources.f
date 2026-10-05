@@ -10,9 +10,9 @@
 +incdir+verification/uvm/
 +incdir+verification/uvm/env
 +incdir+verification/uvm/tests
-+incdir+$UVM_HOME/src
-${UVM_HOME}/src/uvm_pkg.sv
-${UVM_HOME}/src/dpi/uvm_dpi.cc
++incdir+$UVM_HOME
+${UVM_HOME}/uvm_pkg.sv
+${UVM_HOME}/dpi/uvm_dpi.cc
       
  // pulp/axi stuff
 ${PULP_AXI_PATH}/src/axi_pkg.sv
@@ -34,7 +34,6 @@ ${PULP_AXI_PATH}/common_cells_repo/src/cdc_fifo_2phase.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/cdc_fifo_gray_clearable.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/cdc_fifo_gray.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/cdc_reset_ctrlr.sv
-${PULP_AXI_PATH}/common_cells_repo/src/cf_math_pkg.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/clk_int_div_static.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/clk_int_div.sv
 ${PULP_AXI_PATH}/common_cells_repo/src/clk_mux_glitch_free.sv

@@ -5,7 +5,7 @@ rm -rf obj_dir
 # Set PULP_AXI_PATH if not already set in the environment
 #export PULP_AXI_PATH="${PULP_AXI_PATH:-$(cd .. && pwd)}"
 export PULP_AXI_PATH="/home/mikail/digital-design/interconnect/axi"
-export UVM_HOME="/home/mikail/digital-design/uvm/uvm-verilator"
+export UVM_HOME="/home/mikail/digital-design/uvm/uvm-verilator/src"
 
 tb_top_name=soc_tb
 # tb_top_name=soc_uvm_tb
@@ -18,7 +18,7 @@ printf "PULP AXI Path: ${PULP_AXI_PATH}\n\n"
 printf "UVM Home: ${UVM_HOME}\n"
 
 verilator \
-    --binary \
+    --lint-only \
     --timing \
     --trace-fst \
     --timescale 1ns/1ps \
@@ -30,7 +30,6 @@ verilator \
     -Wno-CASTCONST \
     -Wno-CONSTRAINTIGN \
     -Wno-DECLFILENAME \
-    -Wno-IMPORTSTAR \
     -Wno-REALCVT \
     -Wno-STMTDLY \
     -Wno-UNDRIVEN \
