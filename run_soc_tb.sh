@@ -18,13 +18,13 @@ printf "PULP AXI Path: ${PULP_AXI_PATH}\n\n"
 printf "UVM Home: ${UVM_HOME}\n"
 
 verilator \
-    --lint-only \
+    --binary \
     --timing \
     --trace-fst \
     --timescale 1ns/1ps \
     --assert \
     -j 0 \
-    +define+UVM_NO_DPI \
+    -DUVM_NO_DPI \
     -DVM_TRACE_FST=1 \
     -Wno-fatal \
     -Wno-CASTCONST \
