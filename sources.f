@@ -12,7 +12,6 @@
 +incdir+verification/uvm/tests
 +incdir+$UVM_HOME
 ${UVM_HOME}/uvm_pkg.sv
-${UVM_HOME}/dpi/uvm_dpi.cc
       
  // pulp/axi stuff
 ${PULP_AXI_PATH}/src/axi_pkg.sv
