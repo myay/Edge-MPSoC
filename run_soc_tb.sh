@@ -8,7 +8,7 @@ export PULP_AXI_PATH="/home/mikail/digital-design/interconnect/axi"
 export UVM_HOME="/home/mikail/digital-design/uvm/uvm-verilator/src"
 
 tb_top_name=soc_tb
-# tb_top_name=soc_uvm_tb
+#tb_top_name=soc_uvm_tb
 filelist=sources.f
 
 printf "\n\n"
