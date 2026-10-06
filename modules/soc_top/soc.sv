@@ -204,8 +204,8 @@ module soc #(
 								 NoMstPorts:         32'd4, // 4 Target Memory/Peripheral Ports
 								 MaxMstTrans:        32'd8,
 								 MaxSlvTrans:        32'd8,
-								 FallThrough:        1'b1,
-								 LatencyMode:        axi_pkg::NO_LATENCY,
+								 FallThrough:        1'b0,
+								 LatencyMode:        axi_pkg::CUT_ALL_AX,
 								 AxiIdWidthSlvPorts: 4,     // Matches TB_ID_W_SLV from axi_typedefs.svh
 								 AxiIdUsedSlvPorts:  4,
 								 AxiAddrWidth:       32,    // Matches TB_ADDR_W
