@@ -5,4 +5,5 @@ import uvm_pkg::*;
 // Include components in dependency order
 `include "my_env.sv"
 `include "base_test.sv"
+`include "soc_instantiation_test.sv"
 endpackage
