@@ -7,7 +7,7 @@
 class axi_scoreboard extends uvm_scoreboard;
    `uvm_component_utils(axi_scoreboard)
 
-   // Analysis export to receive transactions from the monitor's analysis port
+   // Analysis export (consumer) to receive transactions from the monitor's analysis port (producer)
    // Declares an analysis implementation port
    // axi_transaction is the type of data packet this port accepts
    // axi_scoreboard is "this"
@@ -28,7 +28,7 @@ class axi_scoreboard extends uvm_scoreboard;
       ap_export = new("ap_export", this);
    endfunction
 
-   // The write() function is called automatically whenever the monitor calls ap.write(trans)
+   // The write() function is called automatically whenever the monitor calls ap.write(trans) to receive a transaction
    // Whenever a connected monitor calls analysis_port.write(trans), UVM automatically invokes this function inside the scoreboard, passing the transaction object trans
    virtual function void write(axi_transaction trans);
       // Assuming your cmd enum uses 1 for WRITE and 0 for READ
