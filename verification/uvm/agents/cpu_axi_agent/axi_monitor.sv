@@ -39,7 +39,9 @@ class axi_monitor extends uvm_monitor;
          `uvm_info("MON", $sformatf("Observed %s at Addr: %h, Data: %h", 
 				    trans.cmd.name(), trans.addr, trans.data), UVM_HIGH)
 
-         // Broadcast to the scoreboard
+         // Broadcast to the scoreboard, calling the write method on that port
+	 // The monitor doesn't implement a write() function; instead, it calls a write() method provided by its analysis port to broadcast data out
+	 // Scoreboard receives this and calls its own write function
          ap.write(trans);
       end
    endtask
