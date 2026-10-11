@@ -18,11 +18,11 @@ ${UVM_HOME}/uvm_pkg.sv
 ./verification/uvm/tests/test_pkg.sv
 ./verification/uvm/tb_top/soc_uvm_tb.sv
 ./verification/uvm/tb_top/cpu_bfm_if.sv
-./verification/uvm/agents/cpu_axi_agent/axi_agent.sv
-./verification/uvm/agents/cpu_axi_agent/axi_driver.sv
-./verification/uvm/agents/cpu_axi_agent/axi_monitor.sv
-./verification/uvm/agents/cpu_axi_agent/axi_sequencer.sv
-./verification/uvm/agents/cpu_axi_agent/axi_transaction.sv
+//./verification/uvm/agents/cpu_axi_agent/axi_agent.sv
+//./verification/uvm/agents/cpu_axi_agent/axi_driver.sv
+//./verification/uvm/agents/cpu_axi_agent/axi_monitor.sv
+//./verification/uvm/agents/cpu_axi_agent/axi_sequencer.sv
+//./verification/uvm/agents/cpu_axi_agent/axi_transaction.sv
 ./verification/uvm/agents/cpu_axi_agent/sequences/soc_write_read_seq.sv
 
       
