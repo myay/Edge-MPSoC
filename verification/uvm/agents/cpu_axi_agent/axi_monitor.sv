@@ -3,6 +3,10 @@ class axi_monitor extends uvm_monitor;
    `uvm_component_utils(axi_monitor)
 
    virtual cpu_bfm_if vif;
+
+   int	   trans_cmd;
+   logic [31:0]	trans_addr;
+   logic [63:0]	trans_data;
    
    // Analysis port to broadcast observed transactions to the scoreboard
    uvm_analysis_port#(axi_transaction) ap;

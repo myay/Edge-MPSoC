@@ -1,7 +1,7 @@
 package test_pkg;
-`include "uvm_macros.svh"
 import uvm_pkg::*;
-
+`include "uvm_macros.svh"
+`include "axi_typedefs.svh"
 // This package uses preprocessor `include statements to group all dynamic components into a single package scope
    
 // Transaction
