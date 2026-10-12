@@ -1,4 +1,4 @@
-Edge-MPSoC: A RISC-V System-on-Chip (SoC) framework for Edge AI including RTL modules, firmware compilation toolchain, register map generation, and simulation infrastructure.
+Edge-MPSoC: A RISC-V System-on-Chip (SoC) framework for Edge AI including RTL modules, UVM verification, firmware compilation toolchain, register map generation, and open-source simulation infrastructure.
 
 ---
 
