@@ -23,7 +23,7 @@ ${UVM_HOME}/uvm_pkg.sv
 //./verification/uvm/agents/cpu_axi_agent/axi_monitor.sv
 //./verification/uvm/agents/cpu_axi_agent/axi_sequencer.sv
 //./verification/uvm/agents/cpu_axi_agent/axi_transaction.sv
-./verification/uvm/agents/cpu_axi_agent/sequences/soc_write_read_seq.sv
+//./verification/uvm/agents/cpu_axi_agent/sequences/soc_write_read_seq.sv
 
       
  // pulp/axi stuff
