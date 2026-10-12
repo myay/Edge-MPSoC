@@ -6,15 +6,17 @@ import uvm_pkg::*;
    
 // Transaction
 `include "axi_transaction.sv"
-// Agent
+
+// AXI agent
 `include "axi_driver.sv"
 `include "axi_monitor.sv"
 `include "axi_sequencer.sv"   
 `include "axi_agent.sv"
+`include "soc_write_read_seq.sv"
 
-// Environment Component and Scoreboard
+// Scoreboard and environment
 `include "axi_scoreboard.sv"
-`include "my_env.sv"
+`include "soc_env.sv"
    
 // Tests
 `include "base_test.sv"

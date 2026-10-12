@@ -5,7 +5,7 @@ class base_test extends uvm_test;
    `uvm_component_utils(base_test)
 
    // Component handle of structural environment that contains agents, scoreboards, etc.
-   my_env env;
+   soc_env env;
 
    // Standard UVM component constructor
    // Calls the constructor of the parent class (uvm_test), registering the component's place and name in the global UVM hierarchy tree (uvm_root).
@@ -25,7 +25,7 @@ class base_test extends uvm_test;
       // Instantiates the my_env component using the UVM Factory
       // "env": Sets the string instance name of the environment object
       // this: Passes base_test as the parent component, placing env under base_test in the hierarchy tree (uvm_test_top.env)
-      env = my_env::type_id::create("env", this);
+      env = soc_env::type_id::create("env", this);
    endfunction
 
    // "task" declares a time-consuming routine (in contrast, "build_phase" does not consume any simulation time)
