@@ -50,8 +50,8 @@ class axi_scoreboard extends uvm_scoreboard;
                                                trans.addr, trans.data), UVM_LOW)
             end
          end else begin
-            // Warn if reading from an address that was never written to by the testbench
-            `uvm_warning("SCB_UNINIT", $sformatf("Read from uninitialized Addr=0x%0h, Actual=0x%0h", 
+            // Error if reading from an address that was never written to by the testbench
+            `uvm_error("SCB_UNINIT", $sformatf("Read from uninitialized Addr=0x%0h, Actual=0x%0h", 
                                                  trans.addr, trans.data))
          end
       end
