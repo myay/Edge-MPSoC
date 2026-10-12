@@ -33,7 +33,7 @@ class axi_monitor extends uvm_monitor;
          vif.wait_for_transfer(trans_cmd, trans_addr, trans_data);
 
 	 // ---> INSPECT RAW BFM OUTPUT <---
-	 `uvm_info("MON_DEBUG", $sformatf("RAW BFM Transfer -> cmd_int: %0d | Addr: 0x%08h | Data: 0x%016h", 
+	 `uvm_info("MON_DEBUG", $sformatf("\n >RAW BFM Transfer -> cmd_int: %0d | Addr: 0x%08h | Data: 0x%016h", 
 					  trans_cmd, trans_addr, trans_data), UVM_LOW)
 
          // Create a new transaction object
@@ -43,8 +43,7 @@ class axi_monitor extends uvm_monitor;
          trans.cmd  = axi_cmd_e'(trans_cmd);
          trans.addr = trans_addr;
          trans.data = trans_data;
-
-         `uvm_info("MON", $sformatf("Observed %s at Addr: %h, Data: %h", 
+         `uvm_info("MON", $sformatf("\n >Observed %s at Addr: %h, Data: %h", 
 				    trans.cmd.name(), trans.addr, trans.data), UVM_HIGH)
 
          // Broadcast to the scoreboard, calling the write method on that port
