@@ -32,6 +32,10 @@ class axi_monitor extends uvm_monitor;
          // Assuming we add a passive snooping task `wait_for_transfer` to cpu_bfm_if:
          vif.wait_for_transfer(trans_cmd, trans_addr, trans_data);
 
+	 // ---> INSPECT RAW BFM OUTPUT <---
+	 `uvm_info("MON_DEBUG", $sformatf("RAW BFM Transfer -> cmd_int: %0d | Addr: 0x%08h | Data: 0x%016h", 
+					  trans_cmd, trans_addr, trans_data), UVM_LOW)
+
          // Create a new transaction object
          trans = axi_transaction::type_id::create("trans");
          
