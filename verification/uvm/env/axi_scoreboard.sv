@@ -32,13 +32,13 @@ class axi_scoreboard extends uvm_scoreboard;
    // Whenever a connected monitor calls analysis_port.write(trans), UVM automatically invokes this function inside the scoreboard, passing the transaction object trans
    virtual function void write(axi_transaction trans);
       // Assuming your cmd enum uses 1 for WRITE and 0 for READ
-      if (trans.cmd == 1 /* AXI_WRITE */) begin
+      if (trans.cmd == AXI_WRITE) begin
          // Update the golden model on an observed write
          golden_mem[trans.addr] = trans.data;
          `uvm_info("SCB_WRITE", $sformatf("Stored in Golden Model: Addr=0x%0h, Data=0x%0h", 
                                           trans.addr, trans.data), UVM_HIGH)
       end
-      else if (trans.cmd == 0 /* AXI_READ */) begin
+      else if (trans.cmd == AXI_READ) begin
          // Check if the address has been written to previously
          if (golden_mem.exists(trans.addr)) begin
             // Compare observed read data against the golden model

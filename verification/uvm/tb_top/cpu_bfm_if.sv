@@ -31,18 +31,29 @@ interface cpu_bfm_if(
       // fork runs multiple thread blocks in parallel
       fork
          // Thread 1: Sniff Write Completion (AW & W handshaken, plus B response)
-         begin : sniff_write
-            // Wait for valid address and write data handshakes
-            wait (ext_mst_req.aw_valid && ext_mst_resp.aw_ready && 
-                  ext_mst_req.w_valid  && ext_mst_resp.w_ready);
-            
+	 begin : sniff_write
+            logic [31:0] captured_awaddr;
+            logic [63:0] captured_wdata;
+
+            // Capture AW and W independently
+            fork
+               begin
+		  wait (ext_mst_req.aw_valid && ext_mst_resp.aw_ready);
+		  captured_awaddr = ext_mst_req.aw.addr;
+               end
+               begin
+		  wait (ext_mst_req.w_valid && ext_mst_resp.w_ready);
+		  captured_wdata = ext_mst_req.w.data;
+               end
+            join
+
             // Wait for write response handshake
             wait (ext_mst_resp.b_valid && ext_mst_req.b_ready);
 
-            trans_cmd  = 1; // AXI_WRITE
-            trans_addr = ext_mst_req.aw.addr;
-            trans_data = ext_mst_req.w.data;
-         end
+            trans_cmd  = AXI_WRITE;
+            trans_addr = captured_awaddr;
+            trans_data = captured_wdata;
+	 end
          
          // Thread 2: Sniff Read Completion (AR handshake followed by R handshake)
          begin : sniff_read
@@ -51,12 +62,12 @@ interface cpu_bfm_if(
             
             wait (ext_mst_resp.r_valid && ext_mst_req.r_ready);
             
-            trans_cmd  = 0; // AXI_READ
+            trans_cmd  = AXI_READ;
             trans_addr = captured_araddr;
             trans_data = ext_mst_resp.r.data;
          end
-      // Waits for any one of the forked threads to finish
-      // After execution, immediately jumps past the join_any statement—without waiting for the other threads to finish  
+	 // Waits for any one of the forked threads to finish
+	 // After execution, immediately jumps past the join_any statement—without waiting for the other threads to finish  
       join_any
 
       // Kills the losing thread (e.g., if a read finished, this cancels the lingering write-waiting thread) so it doesn't remain active in the background.

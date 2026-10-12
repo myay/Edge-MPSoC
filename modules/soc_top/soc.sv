@@ -422,7 +422,7 @@ module soc #(
    // ============================================================================
    // SIMULATION-ONLY DEBUG TRACKER & PROTOCOL CHECKER
    // ============================================================================
-
+`ifdef DEBUG_PRINT // turns tracking on/off
 `ifndef SYNTHESIS
    
    initial begin
@@ -622,6 +622,7 @@ module soc #(
    end
    // synopsys translate_on
 
+`endif //  `ifndef SYNTHESIS
 `endif
 
 endmodule
