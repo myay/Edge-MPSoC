@@ -119,7 +119,6 @@ ${PULP_AXI_PATH}/src/axi_lite_xbar.sv
 ${PULP_AXI_PATH}/src/axi_dumper.sv
 ${PULP_AXI_PATH}/src/axi_lite_mailbox.sv
 ${PULP_AXI_PATH}/src/axi_to_mem_split.sv
-#${PULP_AXI_PATH}/src/axi_test.sv
 ${PULP_AXI_PATH}/src/axi_multicut.sv
 ${PULP_AXI_PATH}/src/axi_dw_upsizer.sv
 ${PULP_AXI_PATH}/src/axi_lite_join.sv
@@ -159,7 +158,7 @@ ${PULP_AXI_PATH}/src/axi_id_remap.sv
 ${PULP_AXI_PATH}/src/axi_from_mem.sv
 
 // npu  
-../../modules//npu_wrapper/regs/generated/npu_wrapper_regs_pkg.sv   
+../../modules/npu_wrapper/regs/generated/npu_wrapper_regs_pkg.sv   
 ../../modules/npu_wrapper/regs/generated/npu_wrapper_regs.sv
 ../../modules/dma/axi_dma_rd.sv
 ../../modules/npu_wrapper/npu_wrapper.sv 

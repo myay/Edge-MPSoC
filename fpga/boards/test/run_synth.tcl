@@ -45,7 +45,7 @@ catch {close_project}
 create_project -force $proj_name $proj_dir -part $target_part
 
 # Import sources via common helper
-import_filelist "$repo_root/sources.f"
+import_filelist "$repo_root/fpga/common/sources_synth.f"
 
 # =============================================================================
 # PRINT AND SAVE RESOLVED VIVADO FILELIST
