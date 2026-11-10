@@ -5,6 +5,7 @@
 *.pb
 .Xil/
 .Xil*
+obj_dir/
 
 # Generated project files (recreate via Tcl instead)
 *.xpr
@@ -15,6 +16,8 @@
 *.cache/
 *.gen/
 *.ip_user_files/
+*.elf
+*.hex
 
 # Standalone checkpoints and outputs
 *.dcp
