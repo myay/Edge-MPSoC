@@ -7,7 +7,7 @@ module npu_wrapper_regs (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [3:0] s_axil_awaddr,
+        input wire [4:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -18,7 +18,7 @@ module npu_wrapper_regs (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [3:0] s_axil_araddr,
+        input wire [4:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
@@ -33,7 +33,7 @@ module npu_wrapper_regs (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [3:0] cpuif_addr;
+    logic [4:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -50,10 +50,10 @@ module npu_wrapper_regs (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [3:0] axil_araddr;
+    logic [4:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [3:0] axil_awaddr;
+    logic [4:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -131,17 +131,17 @@ module npu_wrapper_regs (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[3:2], 2'b0};
+                cpuif_addr = {axil_araddr[4:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[3:2], 2'b0};
+                cpuif_addr = {axil_awaddr[4:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[3:2], 2'b0};
+                cpuif_addr = {axil_araddr[4:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -227,10 +227,13 @@ module npu_wrapper_regs (
         logic REG_RDMA_ADDR;
         logic REG_RDMA_LEN;
         logic REG_RDMA_CTRL;
+        logic REG_WDMA_ADDR;
+        logic REG_WDMA_LEN;
+        logic REG_WDMA_CTRL;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [3:0] decoded_addr;
+    logic [4:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -241,9 +244,12 @@ module npu_wrapper_regs (
         automatic logic is_valid_rw;
         is_valid_addr = '1; // No valid address check
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.REG_RDMA_ADDR = cpuif_req_masked & (cpuif_addr == 4'h0);
-        decoded_reg_strb.REG_RDMA_LEN = cpuif_req_masked & (cpuif_addr == 4'h4);
-        decoded_reg_strb.REG_RDMA_CTRL = cpuif_req_masked & (cpuif_addr == 4'h8) & cpuif_req_is_wr;
+        decoded_reg_strb.REG_RDMA_ADDR = cpuif_req_masked & (cpuif_addr == 5'h0);
+        decoded_reg_strb.REG_RDMA_LEN = cpuif_req_masked & (cpuif_addr == 5'h4);
+        decoded_reg_strb.REG_RDMA_CTRL = cpuif_req_masked & (cpuif_addr == 5'h8) & cpuif_req_is_wr;
+        decoded_reg_strb.REG_WDMA_ADDR = cpuif_req_masked & (cpuif_addr == 5'hc);
+        decoded_reg_strb.REG_WDMA_LEN = cpuif_req_masked & (cpuif_addr == 5'h10);
+        decoded_reg_strb.REG_WDMA_CTRL = cpuif_req_masked & (cpuif_addr == 5'h14) & cpuif_req_is_wr;
         decoded_err = '0;
     end
 
@@ -276,6 +282,24 @@ module npu_wrapper_regs (
                 logic load_next;
             } valid;
         } REG_RDMA_CTRL;
+        struct {
+            struct {
+                logic [31:0] next;
+                logic load_next;
+            } value;
+        } REG_WDMA_ADDR;
+        struct {
+            struct {
+                logic [19:0] next;
+                logic load_next;
+            } value;
+        } REG_WDMA_LEN;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } valid;
+        } REG_WDMA_CTRL;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -295,6 +319,21 @@ module npu_wrapper_regs (
                 logic value;
             } valid;
         } REG_RDMA_CTRL;
+        struct {
+            struct {
+                logic [31:0] value;
+            } value;
+        } REG_WDMA_ADDR;
+        struct {
+            struct {
+                logic [19:0] value;
+            } value;
+        } REG_WDMA_LEN;
+        struct {
+            struct {
+                logic value;
+            } valid;
+        } REG_WDMA_CTRL;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -362,6 +401,70 @@ module npu_wrapper_regs (
         end
     end
     assign hwif_out.REG_RDMA_CTRL.valid.value = field_storage.REG_RDMA_CTRL.valid.value;
+    // Field: npu_wrapper_regs.REG_WDMA_ADDR.value
+    always_comb begin
+        automatic logic [31:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.REG_WDMA_ADDR.value.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.REG_WDMA_ADDR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.REG_WDMA_ADDR.value.value & ~decoded_wr_biten[31:0]) | (decoded_wr_data[31:0] & decoded_wr_biten[31:0]);
+            load_next_c = '1;
+        end
+        field_combo.REG_WDMA_ADDR.value.next = next_c;
+        field_combo.REG_WDMA_ADDR.value.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(field_combo.REG_WDMA_ADDR.value.load_next) begin
+            field_storage.REG_WDMA_ADDR.value.value <= field_combo.REG_WDMA_ADDR.value.next;
+        end
+    end
+    assign hwif_out.REG_WDMA_ADDR.value.value = field_storage.REG_WDMA_ADDR.value.value;
+    // Field: npu_wrapper_regs.REG_WDMA_LEN.value
+    always_comb begin
+        automatic logic [19:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.REG_WDMA_LEN.value.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.REG_WDMA_LEN && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.REG_WDMA_LEN.value.value & ~decoded_wr_biten[19:0]) | (decoded_wr_data[19:0] & decoded_wr_biten[19:0]);
+            load_next_c = '1;
+        end
+        field_combo.REG_WDMA_LEN.value.next = next_c;
+        field_combo.REG_WDMA_LEN.value.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(field_combo.REG_WDMA_LEN.value.load_next) begin
+            field_storage.REG_WDMA_LEN.value.value <= field_combo.REG_WDMA_LEN.value.next;
+        end
+    end
+    assign hwif_out.REG_WDMA_LEN.value.value = field_storage.REG_WDMA_LEN.value.value;
+    // Field: npu_wrapper_regs.REG_WDMA_CTRL.valid
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.REG_WDMA_CTRL.valid.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.REG_WDMA_CTRL && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.REG_WDMA_CTRL.valid.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.REG_WDMA_CTRL.valid.next = next_c;
+        field_combo.REG_WDMA_CTRL.valid.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            field_storage.REG_WDMA_CTRL.valid.value <= 1'h0;
+        end else begin
+            if(field_combo.REG_WDMA_CTRL.valid.load_next) begin
+                field_storage.REG_WDMA_CTRL.valid.value <= field_combo.REG_WDMA_CTRL.valid.next;
+            end
+        end
+    end
+    assign hwif_out.REG_WDMA_CTRL.valid.value = field_storage.REG_WDMA_CTRL.valid.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -374,7 +477,7 @@ module npu_wrapper_regs (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [3:0] rd_mux_addr;
+    logic [4:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -383,11 +486,17 @@ module npu_wrapper_regs (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 4'h0) begin
+        if(rd_mux_addr == 5'h0) begin
             readback_data_var[31:0] = field_storage.REG_RDMA_ADDR.value.value;
         end
-        if(rd_mux_addr == 4'h4) begin
+        if(rd_mux_addr == 5'h4) begin
             readback_data_var[19:0] = field_storage.REG_RDMA_LEN.value.value;
+        end
+        if(rd_mux_addr == 5'hc) begin
+            readback_data_var[31:0] = field_storage.REG_WDMA_ADDR.value.value;
+        end
+        if(rd_mux_addr == 5'h10) begin
+            readback_data_var[19:0] = field_storage.REG_WDMA_LEN.value.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

@@ -1,24 +1,45 @@
 addrmap npu_wrapper_regs {
     name = "NPU Control and Status Registers";
-    
+
+    // RDMA
     reg {
-        name = "DMA Source Address";
+        name = "RDMA Source Address";
         field { hw=r; sw=rw; } value[32];
     } REG_RDMA_ADDR @0x0;
 
     reg {
-        name = "DMA Transfer Length";
+        name = "RDMA Transfer Length";
         field { hw=r; sw=rw; } value[20];
     } REG_RDMA_LEN @0x4;
 
     reg {
-        name = "DMA Control";
+        name = "RDMA Control";
         field { 
             hw=r; sw=w; 
             singlepulse; // Automatically makes it a 1-cycle self-clearing pulse
 	    reset = 1'b0;
         } valid[1];
     } REG_RDMA_CTRL @0x8;
+
+    // WDMA
+    reg {
+        name = "WDMA Destination Address";
+        field { hw=r; sw=rw; } value[32];
+    } REG_WDMA_ADDR @0xC;
+
+    reg {
+        name = "WDMA Transfer Length";
+        field { hw=r; sw=rw; } value[20];
+    } REG_WDMA_LEN @0x10;
+
+    reg {
+        name = "WDMA Control";
+        field {
+            hw=r; sw=w;
+            singlepulse;
+	    reset = 1'b0;
+        } valid[1];
+    } REG_WDMA_CTRL @0x14;
 };
 
 // peakrdl regblock npu_wrapper_regs.rdl --cpuif axi4-lite -o ./peakrdl/
