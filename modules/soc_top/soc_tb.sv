@@ -115,8 +115,62 @@ module soc_tb;
       // $display("[TB] Force complete. Checking for DMA startup...");
       // /// *** temporary
       $display(">>>[TB] End NPU rdma configuration.");
+      
+      # 1000;
+      
+      $display(">>>[TB] Starting NPU wdma via AXI Bus...");
+      // WDMA first (destination), then RDMA (source)
+      i_soc.i_cpu_bfm.axi_write(32'h4000_000C, 64'h0000_0000_1000_0200); // WDMA_ADDR
+      i_soc.i_cpu_bfm.axi_write(32'h4000_0010, 64'h0000_0000_0000_003F); // WDMA_LEN = 32 B
+      i_soc.i_cpu_bfm.axi_write(32'h4000_0014, 64'h0000_0000_0000_0001); // WDMA_CTRL start
+      $display(">>>[TB] End NPU wdma configuration.");
 
-      #1000;
+      // =====================================================================
+      // CHECK NPU WDMA RESULT: dst[i] == src[i] + 1 (per 32-bit half)
+      // =====================================================================
+      #1000;   // let the WDMA finish (WDMA_DONE came ~140 ns after config)
+
+      begin : check_npu_wdma
+         logic [31:0] src_addr, dst_addr;
+         logic [63:0] src_data, dst_data, exp_data, mask;
+         int          len, nbytes, errors;
+
+         src_addr = 32'h1000_00B8;   // RDMA_ADDR
+         dst_addr = 32'h1000_0200;   // WDMA_ADDR
+         len      = 63;              // RDMA_LEN / WDMA_LEN
+         errors   = 0;
+
+         $display(">>>[TB] Checking NPU WDMA result...");
+
+         for (int i = 0; i < (len + 7) / 8; i++) begin
+            i_soc.i_cpu_bfm.axi_read(src_addr + 8*i, src_data);
+            i_soc.i_cpu_bfm.axi_read(dst_addr + 8*i, dst_data);
+
+            // NPU stub: +1 on each 32-bit half
+            exp_data = { src_data[63:32] + 32'd1, src_data[31:0] + 32'd1 };
+
+            // last word may be partial (e.g. 63 B -> only 7 bytes written)
+            nbytes = (len - 8*i >= 8) ? 8 : (len - 8*i);
+            mask   = (nbytes == 8) ? '1 : ((64'd1 << (8*nbytes)) - 1);
+
+            if ((dst_data & mask) !== (exp_data & mask)) begin
+               $display(">>>[TB] ERROR: addr=%h got=%h exp=%h (mask=%h)",
+                        dst_addr + 8*i, dst_data, exp_data, mask);
+               errors++;
+            end
+            else begin
+               $display(">>>[TB] OK:    addr=%h data=%h",
+                        dst_addr + 8*i, dst_data);
+            end
+         end
+
+         if (errors == 0)
+           $display(">>>[TB] SUCCESS: NPU WDMA wrote %0d bytes correctly", len);
+         else
+           $display(">>>[TB] FAIL: NPU WDMA %0d word(s) wrong", errors);
+      end
+
+      #10000;
       $display(">>>Simulation limit reached. Ending...");
       $finish;
    end

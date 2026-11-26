@@ -10,6 +10,7 @@
 //   - Handles backpressure correctly
 //   - AXIS always ready
 //   - Zero-poisoning resolved via structural packing block
+//   - Data path: RDMA -> NPU stub (+1 on each 32-bit word) -> WDMA -> memory
 // ============================================================================
 
 `include "axi_typedefs.svh"
@@ -157,6 +158,68 @@ module npu_wrapper #(
    end 
 
    // =========================================================================
+   // WDMA CONTROL
+   // =========================================================================
+
+   logic [31:0]	wdma_addr;
+   logic [19:0]	wdma_len;
+
+   logic	wdma_valid;
+
+   assign wdma_addr =
+                     regs_hwif_out.REG_WDMA_ADDR.value.value;
+
+   assign wdma_len =
+                    regs_hwif_out.REG_WDMA_LEN.value.value;
+
+   assign wdma_valid =
+                      regs_hwif_out.REG_WDMA_CTRL.valid.value;
+
+   // =========================================================================
+   // WDMA DESCRIPTOR SKID BUFFER (same as RDMA)
+   // =========================================================================
+
+   logic [31:0]	wdesc_addr_q;
+   logic [19:0]	wdesc_len_q;
+
+   logic	wdesc_valid_q;
+   logic	wdma_desc_ready;
+
+   logic	debug_wdma_status_valid;
+
+   always_ff @(posedge clk_i or negedge rst_ni) begin
+      if (!rst_ni) begin
+
+         wdesc_valid_q <= 1'b0;
+         wdesc_addr_q  <= '0;
+         wdesc_len_q   <= '0;
+
+      end
+      else begin
+
+         if (wdma_valid && !wdesc_valid_q) begin
+
+            wdesc_valid_q <= 1'b1;
+            wdesc_addr_q  <= wdma_addr;
+            wdesc_len_q   <= wdma_len;
+
+            $display("[%0t] WDMA DESC QUEUED addr=%h len=%0d",
+                     $time,
+                     wdma_addr,
+                     wdma_len);
+         end
+
+         if (wdesc_valid_q && wdma_desc_ready) begin
+
+            wdesc_valid_q <= 1'b0;
+
+            $display("[%0t] WDMA DESC ACCEPTED",
+                     $time);
+         end
+      end
+   end
+
+   // =========================================================================
    // DMA STREAM SIGNALS
    // =========================================================================
 
@@ -176,7 +239,27 @@ module npu_wrapper #(
 			 npu_core_valid &&
 			 npu_core_last_raw;
 
-   assign npu_core_ready = 1'b1;
+   logic [19:0]	debug_wdma_status_len;
+   logic [3:0]	debug_wdma_status_error;
+
+   // =========================================================================
+   // NPU STUB (placeholder for the real NPU core)
+   //   RDMA stream in -> add 1 to each 32-bit word -> stream out to WDMA.
+   //   Valid/ready/keep/last pass straight through.
+   // =========================================================================
+
+   logic [63:0]	npu_out_data;
+   logic	npu_out_valid;
+   logic	npu_out_ready;
+   logic [7:0]	npu_out_keep;
+   logic	npu_out_last;
+
+   assign npu_out_data   = { npu_core_data[63:32] + 32'd1,
+                             npu_core_data[31:0]  + 32'd1 };
+   assign npu_out_valid  = npu_core_valid;
+   assign npu_out_keep   = npu_core_keep;
+   assign npu_out_last   = npu_core_last_raw;
+   assign npu_core_ready = npu_out_ready;
 
    // =========================================================================
    // INTERMEDIATE DMA ROUTING WIRES
@@ -255,6 +338,87 @@ module npu_wrapper #(
                                 );
 
    // =========================================================================
+   // AXI DMA WRITER
+   // =========================================================================
+
+   logic [3:0]	dma_awid;
+   logic [31:0]	dma_awaddr;
+   logic [7:0]	dma_awlen;
+   logic [2:0]	dma_awsize;
+   logic [1:0]	dma_awburst;
+   logic	dma_awlock;
+   logic [3:0]	dma_awcache;
+   logic [2:0]	dma_awprot;
+   logic	dma_awvalid;
+   logic [63:0]	dma_wdata;
+   logic [7:0]	dma_wstrb;
+   logic	dma_wlast;
+   logic	dma_wvalid;
+   logic	dma_bready;
+
+   axi_dma_wr #(
+                .AXI_DATA_WIDTH    ( 64 ),
+                .AXI_ADDR_WIDTH    ( 32 ),
+                .AXI_ID_WIDTH      ( 4  ),
+                .AXIS_DATA_WIDTH   ( 64 ),
+                .AXIS_USER_ENABLE  ( 0  ),
+                .LEN_WIDTH         ( 20 ),
+                .TAG_WIDTH         ( 8  ),
+                .ENABLE_SG         ( 0  ),
+                .ENABLE_UNALIGNED  ( 0  )
+                ) i_axi_dma_wr (
+
+                                .clk                            ( clk_i   ),
+                                .rst                            ( !rst_ni ),
+
+                                .s_axis_write_desc_addr         ( wdesc_addr_q    ),
+                                .s_axis_write_desc_len          ( wdesc_len_q     ),
+                                .s_axis_write_desc_tag          ( 8'h03           ),
+                                .s_axis_write_desc_valid        ( wdesc_valid_q   ),
+                                .s_axis_write_desc_ready        ( wdma_desc_ready ),
+
+                                .m_axis_write_desc_status_len   ( debug_wdma_status_len   ),
+                                .m_axis_write_desc_status_tag   ( ),
+                                .m_axis_write_desc_status_id    ( ),
+                                .m_axis_write_desc_status_dest  ( ),
+                                .m_axis_write_desc_status_user  ( ),
+                                .m_axis_write_desc_status_error ( debug_wdma_status_error ),
+                                .m_axis_write_desc_status_valid ( debug_wdma_status_valid ),
+
+                                .s_axis_write_data_tdata        ( npu_out_data   ),
+                                .s_axis_write_data_tkeep        ( npu_out_keep   ),
+                                .s_axis_write_data_tvalid       ( npu_out_valid  ),
+                                .s_axis_write_data_tready       ( npu_out_ready  ),
+                                .s_axis_write_data_tlast        ( npu_out_last   ),
+                                .s_axis_write_data_tid          ( 8'h00 ),
+                                .s_axis_write_data_tdest        ( 8'h00 ),
+                                .s_axis_write_data_tuser        ( 1'b0  ),
+
+                                .m_axi_awid                     ( dma_awid      ),
+                                .m_axi_awaddr                   ( dma_awaddr    ),
+                                .m_axi_awlen                    ( dma_awlen     ),
+                                .m_axi_awsize                   ( dma_awsize    ),
+                                .m_axi_awburst                  ( dma_awburst   ),
+                                .m_axi_awlock                   ( dma_awlock    ),
+                                .m_axi_awcache                  ( dma_awcache   ),
+                                .m_axi_awprot                   ( dma_awprot    ),
+                                .m_axi_awvalid                  ( dma_awvalid   ),
+                                .m_axi_awready                  ( mst_resp_i.aw_ready ),
+                                .m_axi_wdata                    ( dma_wdata     ),
+                                .m_axi_wstrb                    ( dma_wstrb     ),
+                                .m_axi_wlast                    ( dma_wlast     ),
+                                .m_axi_wvalid                   ( dma_wvalid    ),
+                                .m_axi_wready                   ( mst_resp_i.w_ready  ),
+                                .m_axi_bid                      ( mst_resp_i.b.id     ),
+                                .m_axi_bresp                    ( mst_resp_i.b.resp   ),
+                                .m_axi_bvalid                   ( mst_resp_i.b_valid  ),
+                                .m_axi_bready                   ( dma_bready    ),
+
+                                .enable                         ( 1'b1 ),
+                                .abort                          ( 1'b0 )
+                                );
+
+   // =========================================================================
    // AXI MASTER PORT PACKING & STRUCTURAL TIEOFFS
    // =========================================================================
 
@@ -272,6 +436,24 @@ module npu_wrapper #(
       mst_req_o.ar_valid = dma_arvalid;
 
       mst_req_o.r_ready  = dma_rready;
+
+      // WDMA uses the write channels of the same port
+      mst_req_o.aw.id    = dma_awid;
+      mst_req_o.aw.addr  = dma_awaddr;
+      mst_req_o.aw.len   = dma_awlen;
+      mst_req_o.aw.size  = dma_awsize;
+      mst_req_o.aw.burst = dma_awburst;
+      mst_req_o.aw.lock  = dma_awlock;
+      mst_req_o.aw.cache = dma_awcache;
+      mst_req_o.aw.prot  = dma_awprot;
+      mst_req_o.aw_valid = dma_awvalid;
+
+      mst_req_o.w.data   = dma_wdata;
+      mst_req_o.w.strb   = dma_wstrb;
+      mst_req_o.w.last   = dma_wlast;
+      mst_req_o.w_valid  = dma_wvalid;
+
+      mst_req_o.b_ready  = dma_bready;
    end
 
    // =========================================================================
@@ -317,7 +499,7 @@ module npu_wrapper #(
 
    assign s_axil_awvalid     = axil_req.aw_valid;
    assign axil_resp.aw_ready = s_axil_awready;
-   assign s_axil_awaddr      = {28'h0, axil_req.aw.addr[3:0]};
+   assign s_axil_awaddr      = {27'h0, axil_req.aw.addr[4:0]};
    assign s_axil_awprot      = axil_req.aw.prot;
 
    assign s_axil_wvalid      = axil_req.w_valid;
@@ -331,7 +513,7 @@ module npu_wrapper #(
 
    assign s_axil_arvalid     = axil_req.ar_valid;
    assign axil_resp.ar_ready = s_axil_arready;
-   assign s_axil_araddr      = {28'h0, axil_req.ar.addr[3:0]};
+   assign s_axil_araddr      = {27'h0, axil_req.ar.addr[4:0]};
    assign s_axil_arprot      = axil_req.ar.prot;
 
    assign axil_resp.r_valid  = s_axil_rvalid;
@@ -386,6 +568,17 @@ module npu_wrapper #(
       if (rdma_valid)
         $display("[%0t] RDMA_VALID_PULSE", $time);
 
+      if (wdma_valid)
+        $display("[%0t] WDMA_VALID_PULSE", $time);
+
+      if (debug_wdma_status_valid)
+        $display("[%0t] [WDMA_DONE] len=%0d err=%0h", $time,
+                 debug_wdma_status_len, debug_wdma_status_error);
+
+      if (mst_req_o.aw_valid && mst_resp_i.aw_ready)
+        $display("[%0t] AW HANDSHAKE addr=%h len=%0d", $time,
+                 mst_req_o.aw.addr, mst_req_o.aw.len);
+
       if (mst_resp_i.r_valid) begin
          $display("[%0t] RVALID=%0d RREADY=%0d RLAST=%0d DATA=%h",
                   $time,
@@ -404,10 +597,8 @@ module npu_wrapper #(
       end
 
       if (npu_core_valid && npu_core_ready) begin
-         $display("[%0t] AXIS RX data=%h last=%0d",
-                  $time,
-                  npu_core_data,
-                  npu_core_last);
+	 $display("[%0t] AXIS RX in=%h out=%h last=%0d", $time,
+		  npu_core_data, npu_out_data, npu_core_last);
       end
 
       if (mst_req_o.ar_valid && mst_resp_i.ar_ready)

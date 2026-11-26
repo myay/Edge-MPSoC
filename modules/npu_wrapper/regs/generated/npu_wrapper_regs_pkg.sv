@@ -4,8 +4,8 @@
 package npu_wrapper_regs_pkg;
 
     localparam NPU_WRAPPER_REGS_DATA_WIDTH = 32;
-    localparam NPU_WRAPPER_REGS_MIN_ADDR_WIDTH = 4;
-    localparam NPU_WRAPPER_REGS_SIZE = 'hc;
+    localparam NPU_WRAPPER_REGS_MIN_ADDR_WIDTH = 5;
+    localparam NPU_WRAPPER_REGS_SIZE = 'h18;
 
     typedef struct {
         logic [31:0] value;
@@ -32,8 +32,35 @@ package npu_wrapper_regs_pkg;
     } npu_wrapper_regs__REG_RDMA_CTRL__out_t;
 
     typedef struct {
+        logic [31:0] value;
+    } npu_wrapper_regs__REG_WDMA_ADDR__value__out_t;
+
+    typedef struct {
+        npu_wrapper_regs__REG_WDMA_ADDR__value__out_t value;
+    } npu_wrapper_regs__REG_WDMA_ADDR__out_t;
+
+    typedef struct {
+        logic [19:0] value;
+    } npu_wrapper_regs__REG_WDMA_LEN__value__out_t;
+
+    typedef struct {
+        npu_wrapper_regs__REG_WDMA_LEN__value__out_t value;
+    } npu_wrapper_regs__REG_WDMA_LEN__out_t;
+
+    typedef struct {
+        logic value;
+    } npu_wrapper_regs__REG_WDMA_CTRL__valid__out_t;
+
+    typedef struct {
+        npu_wrapper_regs__REG_WDMA_CTRL__valid__out_t valid;
+    } npu_wrapper_regs__REG_WDMA_CTRL__out_t;
+
+    typedef struct {
         npu_wrapper_regs__REG_RDMA_ADDR__out_t REG_RDMA_ADDR;
         npu_wrapper_regs__REG_RDMA_LEN__out_t REG_RDMA_LEN;
         npu_wrapper_regs__REG_RDMA_CTRL__out_t REG_RDMA_CTRL;
+        npu_wrapper_regs__REG_WDMA_ADDR__out_t REG_WDMA_ADDR;
+        npu_wrapper_regs__REG_WDMA_LEN__out_t REG_WDMA_LEN;
+        npu_wrapper_regs__REG_WDMA_CTRL__out_t REG_WDMA_CTRL;
     } npu_wrapper_regs__out_t;
 endpackage
