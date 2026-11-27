@@ -15,8 +15,8 @@
 +incdir+verification/uvm/agents/cpu_axi_agent/sequences
 // uvm .sv files
 ${UVM_HOME}/uvm_pkg.sv
-./verification/uvm/tests/test_pkg.sv
-./verification/uvm/tb_top/soc_uvm_tb.sv
+//./verification/uvm/tests/test_pkg.sv
+//./verification/uvm/tb_top/soc_uvm_tb.sv
 ./verification/uvm/tb_top/cpu_bfm_if.sv
 //./verification/uvm/agents/cpu_axi_agent/axi_agent.sv
 //./verification/uvm/agents/cpu_axi_agent/axi_driver.sv

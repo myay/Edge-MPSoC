@@ -15,7 +15,7 @@ module soc #(
 	     )(
 	       input logic	  clk_i,
 	       input logic	  rst_ni,
-
+	       // Note: Vivado keeps logic only if it can affect an output pin!
 	       // =========================================================================
 	       // EXTERNAL SPI SLAVE INTERFACE PINS
 	       // =========================================================================
@@ -31,6 +31,9 @@ module soc #(
 	       output logic	  spi_sdo1_o,
 	       output logic	  spi_sdo2_o,
 	       output logic	  spi_sdo3_o
+`ifdef SYNTHESIS
+	       ,output logic cpu_trap_o // FPGA only: PicoRV32 trap -> pin/LED
+`endif
 	       );
 
    // =========================================================================
@@ -56,12 +59,19 @@ module soc #(
    slv_req_t  spi_req;
    slv_resp_t spi_resp;
 
-   //assign slv_reqs[4] = spi_req;
-   assign slv_reqs[4] = '0; // tmp tie off
+`ifdef SYNTHESIS
+   // FPGA: SPI slave is a real bus master. This is the path from the bus
+   // to the chip pins, so Vivado must keep everything reachable over it.
+   assign slv_reqs[4] = spi_req;
+`else
+   // Simulation: SPI pins are not driven by the TB -> keep port tied off
+   assign slv_reqs[4] = '0;
+`endif
    assign spi_resp    = slv_resps[4];
 
-   // temp tieoffs
-   assign spi_req = '0;
+   // axi_spi_slave drives every spi_req field except ATOP (no atomics).
+   // (The old "assign spi_req = '0;" drove the same wires a second time.)
+   assign spi_req.aw.atop = '0;
    
 
    // =========================================================================
@@ -172,12 +182,17 @@ module soc #(
    // 7. CPU BFM & PICO INSTANTIATION
    // =========================================================================
 
+`ifdef SYNTHESIS
+   // BFM is a simulation model (tasks, delays) -> no master on port 0 for synthesis
+   assign bfm_req = '0;
+`else
    cpu_bfm i_cpu_bfm (
 		      .clk_i          ( clk_i ),
 		      .rst_ni         ( rst_ni ),
 		      .ext_mst_req_o  ( bfm_req ),
 		      .ext_mst_resp_i ( bfm_resp )
 		      );
+`endif
 
    cpu_picorv32_axi #(
 		      .axi_req_t       ( slv_req_t ),
@@ -188,7 +203,11 @@ module soc #(
 		      ) i_cpu_picorv32 (
 					.clk        ( clk_i ),
 					.resetn     ( rst_ni ),
-					.cpu_trap   ( /* connect to a top-level pin or monitor */ ),
+`ifdef SYNTHESIS
+					.cpu_trap   ( cpu_trap_o ),
+`else
+					.cpu_trap   (),
+`endif
 					.axi_req_o  ( slv_reqs[3] ),
 					.axi_resp_i ( slv_resps[3] )
 					//.axi_req_o  ( ),
